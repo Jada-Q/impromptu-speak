@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-<title>🎤 60 秒即兴 · Impromptu 60</title>
+<title>📚 每日英语 · Daily English</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/png" href="icon-192.png" />
 <meta name="theme-color" content="#0e1414" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="60秒即兴" />
+<meta name="apple-mobile-web-app-title" content="每日英语" />
 <style>
   :root{ --bg:#0e1414; --card:#16201f; --stroke:#26332f; --ink:#eafdf6; --dim:#86a59a;
          --teal:#2fe6c0; --amber:#ffce5a; --pink:#ff7a9c; --red:#ff6b6b; }
@@ -61,6 +61,13 @@
   .day.done{ background:linear-gradient(180deg,var(--teal),#2bbf9f); border-color:transparent; }
   .day.today{ outline:2px solid var(--amber); outline-offset:1px; }
   .lessonItem{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:14px; }
+  .taskRow{ display:flex; align-items:center; gap:11px; padding:14px 13px; border-radius:13px; background:#15211f; border:1px solid var(--stroke); margin-bottom:9px; cursor:pointer; transition:.12s; }
+  .taskRow:active{ transform:scale(.99); }
+  .taskRow .ti{ font-size:21px; line-height:1; }
+  .taskRow .tt{ flex:1; font-size:15px; font-weight:600; }
+  .taskRow .tgo{ color:var(--teal); font-size:20px; font-weight:700; }
+  .taskRow.done{ opacity:.5; cursor:default; }
+  .taskRow.done .tt{ text-decoration:line-through; }
   #lessonOverlay{ position:fixed; inset:0; background:radial-gradient(ellipse at 50% -10%, #16302a, var(--bg) 60%); z-index:60; overflow-y:auto; padding:22px 18px 70px; display:none; }
   #lessonOverlay.on{ display:block; }
   #lessonOverlay .inner{ max-width:520px; margin:0 auto; }
@@ -75,8 +82,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🎤 60 秒即兴</h1>
-  <div class="sub">抽题 → 张口说满 60 秒 · 练临场表达（也练英语）</div>
+  <h1>📚 每日英语</h1>
+  <div class="sub">读 · 背 · 说 — 每天一点点，靠间隔重复积累</div>
 
   <div class="seg" id="langSeg">
     <button data-l="both" class="on">双语</button>
@@ -90,6 +97,11 @@
     </label>
   </div>
 
+  <div class="card">
+    <div style="font-weight:800;font-size:18px;margin-bottom:10px">🎯 今天的任务</div>
+    <div id="todayTasks"></div>
+  </div>
+
   <div class="card" style="padding:16px 20px;margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:baseline">
       <span style="font-size:19px;font-weight:800">🔥 连续 <span id="streakN">0</span> 天</span>
@@ -100,9 +112,8 @@
   </div>
 
   <div class="card">
-    <div style="font-weight:800;font-size:17px;margin-bottom:8px">📚 每日课程 · 🌙睡前读 → 🌅早上复习</div>
-    <div id="taskArea"></div>
-    <details style="margin-top:12px">
+    <div style="font-weight:800;font-size:17px;margin-bottom:8px">📚 课程 & 阅读库</div>
+    <details style="margin-top:4px">
       <summary style="cursor:pointer;color:var(--teal);font-size:13px">+ 导入新课程（粘贴 Claude 给的 JSON）</summary>
       <textarea id="lessonIn" rows="4" placeholder="粘贴课程 JSON…" style="width:100%;font:inherit;font-size:13px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:10px;box-sizing:border-box;margin-top:8px"></textarea>
       <button class="spk" id="lessonImport" style="margin-top:8px">导入</button>
@@ -120,6 +131,7 @@
   </div>
 
   <div class="card">
+    <div style="font-weight:800;font-size:17px;margin-bottom:10px">🎤 60 秒即兴（开口说）</div>
     <div id="topic"><div class="topic-empty">点下面「🎲 抽题」开始</div></div>
 
     <div class="timer">
@@ -407,7 +419,7 @@ function startSpeak(){
     if(left<=10 && left>0){ countEl.className='warn'; phaseEl.textContent='最后 10 秒，撑住！'; if(left<=5) beep(660,0.06); }
     if(left<=0){ clearInterval(timer); running=false; countEl.className='over'; countEl.textContent='0';
       phaseEl.textContent='✅ 说满 60 秒，赞！'; beep(880,0.1); setTimeout(()=>beep(1100,0.18),140);
-      goBtn.textContent='▶︎ 再说一次'; bumpStat(); showRef(true); }
+      goBtn.textContent='▶︎ 再说一次'; localStorage.setItem('is_spoke',dstr(new Date())); bumpStat(); showRef(true); renderToday(); }
   },1000);
 }
 goBtn.addEventListener('click',()=>{
@@ -481,12 +493,6 @@ function addLesson(o){ const a=getLessons();
   return o; }
 function renderLessons(){
   const a=getLessons();
-  const bed=a.filter(l=>!l.bedtimeDone), morn=a.filter(l=>l.bedtimeDone&&!l.morningDone);
-  let t='';
-  if(bed.length){ const l=bed[bed.length-1]; t+=`<button class="big" style="margin-top:6px" data-open="${l.id}" data-mode="bedtime">🌙 睡前读：${esc(l.title)}</button>`; }
-  if(morn.length){ const l=morn[0]; t+=`<button class="big amber" style="margin-top:8px" data-open="${l.id}" data-mode="morning">🌅 早上复习：${esc(l.title)}</button>`; }
-  if(!t) t='<div style="color:var(--dim);font-size:13px">暂无待办。导入一课，开始 🌙睡前读 → 🌅次日复习 的循环。</div>';
-  document.getElementById('taskArea').innerHTML=t;
   const lc=document.getElementById('lessonCount'); if(lc) lc.textContent=a.length;
   document.getElementById('lessonList').innerHTML = a.length
     ? a.slice().reverse().map(l=>{ const st=l.morningDone?'✅ 完成':(l.bedtimeDone?'🌅 待复习':'🌙 待睡前读');
@@ -494,6 +500,33 @@ function renderLessons(){
     : '<span style="color:var(--dim);font-size:13px">还没有文章，导入一课就出现在这。</span>';
   document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openLesson(el.dataset.open, el.dataset.mode));
   document.querySelectorAll('[data-del]').forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); delLesson(el.dataset.del); });
+  renderToday();
+}
+function taskRow(icon,text,done,act){
+  const live = act && !done;
+  return `<div class="taskRow${done?' done':''}"${live?` data-act="${act}"`:''}>`
+    +`<span class="ti">${done?'✅':icon}</span><span class="tt">${esc(text)}</span>${live?'<span class="tgo">›</span>':''}</div>`;
+}
+function renderToday(){
+  const el=document.getElementById('todayTasks'); if(!el) return;
+  const a=getLessons();
+  const bed=a.filter(l=>!l.bedtimeDone), morn=a.filter(l=>l.bedtimeDone&&!l.morningDone);
+  const due=(typeof dueCount==='function')?dueCount():0;
+  const spoke=localStorage.getItem('is_spoke')===dstr(new Date());
+  let h='';
+  if(morn.length) h+=taskRow('🌅','早上复习《'+morn[0].title+'》',false,'morning:'+morn[0].id);
+  else if(bed.length){ const l=bed[bed.length-1]; h+=taskRow('🌙','睡前读《'+l.title+'》',false,'bedtime:'+l.id); }
+  else h+=taskRow('📚','今日课程已完成（可导入新课）',true,null);
+  h+= due>0 ? taskRow('🔁','复习单词（'+due+' 个）',false,'review') : taskRow('🔁','单词已复习完',true,null);
+  h+= taskRow('🎤','开口说一题（60 秒）',spoke,'speak');
+  el.innerHTML=h;
+  el.querySelectorAll('[data-act]').forEach(x=>x.onclick=()=>{
+    const v=x.dataset.act;
+    if(v.indexOf('morning:')===0) openLesson(v.slice(8),'morning');
+    else if(v.indexOf('bedtime:')===0) openLesson(v.slice(8),'bedtime');
+    else if(v==='review') startReview();
+    else if(v==='speak'){ const t=document.getElementById('drawBtn'); if(t) t.scrollIntoView({behavior:'smooth',block:'center'}); }
+  });
 }
 function wrow(w,mode){ return `<div class="wrow ${mode==='morning'?'hide':''}" data-en="${esc(w[0])}"><span class="wen">🔊 ${esc(w[0])}</span><span class="zh">${esc(w[1]||'')}</span></div>`; }
 function openLesson(id,mode){
@@ -572,7 +605,7 @@ function showSrsCard(){
   if(srsIdx>=srsQueue.length){
     body.innerHTML=`<div style="text-align:center;margin-top:50px;font-size:22px;font-weight:800">🎉 今日复习完成！</div>
       <div style="text-align:center;color:var(--dim);margin-top:10px">复习了 ${srsQueue.length} 个，已记进打卡。</div>`;
-    recordToday(); renderStreak(); renderSrs(); return;
+    recordToday(); renderStreak(); renderSrs(); renderToday(); return;
   }
   const it=srsQueue[srsIdx];
   body.innerHTML=`<div style="color:var(--dim);text-align:center">${srsIdx+1} / ${srsQueue.length} · ${it.type==='phrase'?'词组':'生词'}</div>

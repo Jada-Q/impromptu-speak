@@ -1,7 +1,7 @@
 {
-  "name": "60 秒即兴 · Impromptu 60",
-  "short_name": "60秒即兴",
-  "description": "抽题 + 60 秒计时，练临场表达和英语口语",
+  "name": "每日英语 · Daily English",
+  "short_name": "每日英语",
+  "description": "每日英语学习：读文章 + 间隔重复背词 + 60 秒即兴口语",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
