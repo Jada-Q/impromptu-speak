@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>🎤 60 秒即兴 · Impromptu 60</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<meta name="theme-color" content="#0e1414" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="60秒即兴" />
+<style>
+  :root{ --bg:#0e1414; --card:#16201f; --stroke:#26332f; --ink:#eafdf6; --dim:#86a59a;
+         --teal:#2fe6c0; --amber:#ffce5a; --pink:#ff7a9c; --red:#ff6b6b; }
+  *{margin:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{ background:radial-gradient(ellipse at 50% -10%, #16302a, var(--bg) 60%); color:var(--ink);
+        font-family:system-ui,-apple-system,"PingFang SC",sans-serif; min-height:100vh; padding:28px 18px 60px; }
+  .wrap{ max-width:520px; margin:0 auto; }
+  h1{ font-size:24px; text-align:center; }
+  .sub{ text-align:center; color:var(--dim); font-size:14px; margin:6px 0 22px; }
+
+  .seg{ display:flex; gap:6px; justify-content:center; margin-bottom:20px; }
+  .seg button{ font:inherit; font-size:13px; font-weight:700; cursor:pointer; padding:8px 14px; border-radius:20px;
+        border:1px solid var(--stroke); background:#15211f; color:var(--dim); }
+  .seg button.on{ background:linear-gradient(90deg,var(--teal),#3fb0ff); color:#04211c; border-color:transparent; }
+
+  .card{ background:var(--card); border:1px solid var(--stroke); border-radius:20px; padding:26px 22px; }
+  #topicEN{ font-size:22px; font-weight:800; line-height:1.4; }
+  #topicZH{ font-size:17px; color:var(--dim); margin-top:10px; line-height:1.5; }
+  .topic-empty{ color:var(--dim); font-size:16px; text-align:center; }
+
+  .big{ width:100%; font:inherit; font-weight:800; font-size:20px; cursor:pointer; border:none; border-radius:16px;
+        padding:16px; margin-top:18px; color:#04211c; background:linear-gradient(90deg,var(--teal),#3fb0ff); }
+  .big.amber{ background:linear-gradient(90deg,var(--amber),var(--pink)); color:#2a0c12; }
+  .big:active{ transform:scale(.99); }
+  .big:disabled{ opacity:.45; }
+
+  .timer{ text-align:center; margin:22px 0 6px; }
+  #count{ font-size:84px; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; color:var(--teal); }
+  #count.warn{ color:var(--amber); } #count.over{ color:var(--red); }
+  #phase{ color:var(--dim); font-size:15px; margin-top:6px; min-height:22px; font-weight:600; }
+  .bar{ height:8px; border-radius:6px; background:#1c2a27; overflow:hidden; margin-top:14px; }
+  .bar i{ display:block; height:100%; width:100%; background:linear-gradient(90deg,var(--teal),var(--amber)); transition:width .25s linear; }
+
+  .tip{ background:#15211f; border:1px solid var(--stroke); border-radius:14px; padding:14px 16px; margin-top:18px; }
+  .tip h3{ font-size:14px; color:var(--teal); margin-bottom:8px; }
+  .tip p{ font-size:13.5px; color:#c2d6cf; line-height:1.7; margin:3px 0; }
+  .tip .k{ color:var(--amber); font-weight:700; }
+
+  .opts{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:16px; color:var(--dim); font-size:14px; }
+  .opts input{ width:18px; height:18px; accent-color:var(--teal); }
+  #stat{ text-align:center; color:var(--amber); font-weight:700; font-size:14px; margin-top:16px; min-height:20px; }
+  .note{ color:var(--dim); font-size:12px; text-align:center; margin-top:18px; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎤 60 秒即兴</h1>
+  <div class="sub">抽题 → 张口说满 60 秒 · 练临场表达（也练英语）</div>
+
+  <div class="seg" id="langSeg">
+    <button data-l="both" class="on">双语</button>
+    <button data-l="en">English</button>
+    <button data-l="zh">中文</button>
+  </div>
+
+  <div class="card">
+    <div id="topic"><div class="topic-empty">点下面「🎲 抽题」开始</div></div>
+
+    <div class="timer">
+      <div id="count">60</div>
+      <div id="phase"></div>
+      <div class="bar"><i id="barFill"></i></div>
+    </div>
+
+    <button class="big" id="drawBtn">🎲 抽题</button>
+    <button class="big amber" id="goBtn" disabled>▶︎ 开始说 60 秒</button>
+
+    <div class="opts">
+      <label><input type="checkbox" id="prepChk"> 先给我 15 秒想一想</label>
+    </div>
+
+    <div id="stat"></div>
+  </div>
+
+  <div class="tip">
+    <h3>不知道怎么说？用 PREP 四步</h3>
+    <p><span class="k">P 观点</span> 先一句话给结论（我觉得…）</p>
+    <p><span class="k">R 理由</span> 因为…（1-2 个原因）</p>
+    <p><span class="k">E 例子</span> 比如…（一个具体例子最有说服力）</p>
+    <p><span class="k">P 重申</span> 所以…（再说一遍观点收尾）</p>
+  </div>
+
+  <div class="note">说满 60 秒不卡壳就是胜利，内容好不好不重要。每天 3 次，坚持比完美重要。</div>
+</div>
+
+<script>
+let ctx;
+function audio(){ if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; }
+function beep(freq,dur){ const a=audio(),o=a.createOscillator(),g=a.createGain(); o.frequency.value=freq;
+  o.connect(g); g.connect(a.destination); const t=a.currentTime; g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.25,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.start(t); o.stop(t+dur+0.02); }
+
+const TOPICS=[
+  {en:"Describe the best part of your day today.", zh:"说说你今天最棒的一件事。"},
+  {en:"If you could have any superpower, what would it be and why?", zh:"如果能拥有一种超能力，你选什么？为什么？"},
+  {en:"Coffee or tea? Make your case.", zh:"咖啡还是茶？说服我。"},
+  {en:"Recommend a movie or book you love.", zh:"推荐一部你喜欢的电影或书。"},
+  {en:"What's something new you learned recently?", zh:"你最近学到的一件新东西是什么？"},
+  {en:"Describe your perfect weekend.", zh:"描述你心目中完美的周末。"},
+  {en:"If you could live anywhere, where and why?", zh:"如果能住在任何地方，你选哪里？为什么？"},
+  {en:"What skill do you wish you had?", zh:"你最想拥有的一个技能是什么？"},
+  {en:"Talk about a place you want to travel to.", zh:"聊一个你想去旅行的地方。"},
+  {en:"What makes a good friend?", zh:"什么样的人算是好朋友？"},
+  {en:"Describe your favorite food without saying its name.", zh:"不说名字，描述你最爱的食物。"},
+  {en:"Is it better to be early or to be on time? Why?", zh:"早到好还是准时好？为什么？"},
+  {en:"What's a small habit that improved your life?", zh:"哪个小习惯改善了你的生活？"},
+  {en:"If you had an extra hour every day, how would you use it?", zh:"如果每天多出一小时，你会怎么用？"},
+  {en:"Convince me to try your hobby.", zh:"说服我去尝试你的爱好。"},
+  {en:"What does success mean to you?", zh:"成功对你意味着什么？"},
+  {en:"Describe a person you admire.", zh:"描述一个你敬佩的人。"},
+  {en:"Phone in the morning: good or bad? Why?", zh:"早上先看手机，好还是不好？为什么？"},
+  {en:"What would you tell your younger self?", zh:"你会对年轻时的自己说什么？"},
+  {en:"Pick a season and defend it as the best.", zh:"选一个季节，论证它是最好的。"},
+  {en:"What's worth spending more money on?", zh:"什么东西值得多花点钱？"},
+  {en:"Describe your ideal way to relax.", zh:"描述你最理想的放松方式。"},
+  {en:"Should kids learn to code? Why or why not?", zh:"小孩该学编程吗？为什么？"},
+  {en:"What's a movie/song that changed how you feel?", zh:"哪部电影/哪首歌改变过你的心情？"},
+  {en:"Talk about something you're grateful for.", zh:"说一件你心怀感激的事。"},
+  {en:"City life or countryside? Why?", zh:"城市生活还是乡村生活？为什么？"},
+  {en:"What's a rule you think should be changed?", zh:"有什么规定你觉得该改？"},
+  {en:"Describe how to make your favorite drink.", zh:"讲讲怎么做你最爱的一杯饮料。"},
+  {en:"If money were no object, what would you do all day?", zh:"如果不愁钱，你整天会做什么？"},
+  {en:"What's the best advice you've ever received?", zh:"你收到过最好的建议是什么？"},
+  {en:"Is it better to be a specialist or a generalist?", zh:"做专才好还是通才好？"},
+  {en:"Describe your hometown to someone who's never been.", zh:"向没去过的人描述你的家乡。"},
+  {en:"What technology could you not live without?", zh:"哪样科技产品你离不开？"},
+  {en:"Talk about a goal you have this year.", zh:"聊一个你今年的目标。"},
+  {en:"What makes you laugh?", zh:"什么会让你笑？"},
+  {en:"Should we keep learning after school? Why?", zh:"离开学校后还要不要继续学习？为什么？"},
+  {en:"Describe a challenge you overcame.", zh:"描述一个你克服过的困难。"},
+  {en:"What's overrated, and what's underrated?", zh:"什么被高估了，什么被低估了？"},
+  {en:"If you taught a class, what would it be about?", zh:"如果你开一门课，会教什么？"},
+  {en:"Plan the perfect day for a friend visiting your city.", zh:"为来你城市的朋友安排完美的一天。"}
+];
+
+let lang='both', running=false, timer=null, left=60, lastIdx=-1, cur=null;
+const topicEl=document.getElementById('topic'), countEl=document.getElementById('count'),
+      phaseEl=document.getElementById('phase'), bar=document.getElementById('barFill'),
+      goBtn=document.getElementById('goBtn'), drawBtn=document.getElementById('drawBtn'), statEl=document.getElementById('stat');
+
+document.querySelectorAll('#langSeg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#langSeg button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  lang=b.dataset.l; if(cur) renderTopic();
+}));
+function renderTopic(){
+  let h='';
+  if(lang!=='zh') h+=`<div id="topicEN">${cur.en}</div>`;
+  if(lang!=='en') h+=`<div id="topicZH">${cur.zh}</div>`;
+  topicEl.innerHTML=h;
+}
+drawBtn.addEventListener('click',()=>{
+  let i; do{ i=Math.floor(Math.random()*TOPICS.length); }while(i===lastIdx && TOPICS.length>1);
+  lastIdx=i; cur=TOPICS[i]; renderTopic(); goBtn.disabled=false; resetTimer();
+});
+function resetTimer(){ running=false; clearTimeout(timer); left=60; countEl.textContent='60';
+  countEl.className=''; phaseEl.textContent=''; bar.style.width='100%'; goBtn.textContent='▶︎ 开始说 60 秒'; }
+
+function startSpeak(){
+  left=60; running=true; countEl.className=''; phaseEl.textContent='🗣️ 开始说！'; goBtn.textContent='⏸ 停止';
+  beep(880,0.12);
+  timer=setInterval(()=>{
+    left--; countEl.textContent=left; bar.style.width=(left/60*100)+'%';
+    if(left<=10 && left>0){ countEl.className='warn'; phaseEl.textContent='最后 10 秒，撑住！'; if(left<=5) beep(660,0.06); }
+    if(left<=0){ clearInterval(timer); running=false; countEl.className='over'; countEl.textContent='0';
+      phaseEl.textContent='✅ 说满 60 秒，赞！'; beep(880,0.1); setTimeout(()=>beep(1100,0.18),140);
+      goBtn.textContent='▶︎ 再说一次'; bumpStat(); }
+  },1000);
+}
+goBtn.addEventListener('click',()=>{
+  if(running){ resetTimer(); phaseEl.textContent='已停止'; return; }
+  audio();
+  if(document.getElementById('prepChk').checked){
+    // 15 秒准备
+    let p=15; countEl.textContent=p; countEl.className=''; phaseEl.textContent='🤔 想 15 秒（打腹稿）'; goBtn.textContent='⏸ 跳过准备';
+    running=true;
+    timer=setInterval(()=>{ p--; countEl.textContent=p; if(p<=0){ clearInterval(timer); startSpeak(); } },1000);
+  } else startSpeak();
+});
+
+// 计数（今天 + 累计）
+function todayKey(){ const d=new Date(); return 'is_'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function bumpStat(){
+  const tk=todayKey(); const today=(+localStorage.getItem(tk)||0)+1; localStorage.setItem(tk,today);
+  const total=(+localStorage.getItem('is_total')||0)+1; localStorage.setItem('is_total',total);
+  showStat(today,total);
+}
+function showStat(t,total){ statEl.textContent=`今天第 ${t} 次 · 累计 ${total} 次 ${t>=3?'🎉 达标！':''}`; }
+showStat(+localStorage.getItem(todayKey())||0, +localStorage.getItem('is_total')||0);
+
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+</body>
+</html>
