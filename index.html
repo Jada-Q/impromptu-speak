@@ -112,6 +112,13 @@
   </div>
 
   <div class="card">
+    <div style="font-weight:800;font-size:17px;margin-bottom:4px">🔁 单词复习库（积累）</div>
+    <div style="color:var(--dim);font-size:13px;margin-bottom:10px">所有课程的生词/词组都进这里，按「间隔重复」自动排复习——记得就隔更久，忘了就拉回来，循环到记牢。这才是真积累。</div>
+    <div id="srsStat" style="font-size:14px;margin-bottom:10px"></div>
+    <button class="big" id="srsStart">▶︎ 开始复习</button>
+  </div>
+
+  <div class="card">
     <div id="topic"><div class="topic-empty">点下面「🎲 抽题」开始</div></div>
 
     <div class="timer">
@@ -468,7 +475,9 @@ function saveLessons(a){ localStorage.setItem('is_lessons', JSON.stringify(a)); 
 function addLesson(o){ const a=getLessons();
   o.id='L'+Date.now().toString(36)+Math.floor(performance.now()).toString(36);
   o.added=dstr(new Date()); o.bedtimeDone=null; o.morningDone=null; o.words=o.words||[]; o.phrases=o.phrases||[];
-  a.push(o); saveLessons(a); return o; }
+  a.push(o); saveLessons(a);
+  addToSrs(o.words,'word'); addToSrs(o.phrases,'phrase');   // 词进复习库（积累）
+  return o; }
 function renderLessons(){
   const a=getLessons();
   const bed=a.filter(l=>!l.bedtimeDone), morn=a.filter(l=>l.bedtimeDone&&!l.morningDone);
@@ -523,6 +532,53 @@ if(getLessons().length===0){ addLesson({ title:"AI: From Chatbots to Agents", ar
   words:[["agent","智能体"],["autonomous","自主的"],["execute","执行"],["adjust","调整"],["reliable","可靠的"],["mistake","错误"],["compound","累积放大"],["ruin","毁掉"],["research","研究"],["database","数据库"]],
   phrases:[["break a goal into steps","把目标拆成步骤"],["choose which tools to use","选用哪些工具"],["with little human help","几乎不用人帮"],["work out how to do it","想出怎么做"],["check their own work","自我检查"]] }); }
 renderLessons();
+
+// ===== 间隔重复复习库（积累引擎）=====
+const SRS_INT=[1,2,4,8,16,30]; // 各级间隔天数
+function todayNum(){ const d=new Date(); return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
+function addDaysNum(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
+function getSrs(){ try{ return JSON.parse(localStorage.getItem('is_srs')||'[]'); }catch(e){ return []; } }
+function saveSrs(a){ localStorage.setItem('is_srs', JSON.stringify(a)); }
+function addToSrs(items,type){ const a=getSrs(); const have=new Set(a.map(x=>x.k)); const t=todayNum();
+  (items||[]).forEach(w=>{ const k=(w[0]||'').toLowerCase().trim(); if(!k||have.has(k)) return;
+    a.push({k,en:w[0],zh:w[1]||'',type,lvl:0,due:t}); have.add(k); }); saveSrs(a); }
+function dueCount(){ const t=todayNum(); return getSrs().filter(x=>x.due<=t).length; }
+function renderSrs(){
+  const total=getSrs().length, due=dueCount();
+  document.getElementById('srsStat').innerHTML=`库里 <b>${total}</b> 个 · 今日待复习 <b style="color:var(--amber)">${due}</b> 个`;
+  const btn=document.getElementById('srsStart');
+  if(due>0){ btn.disabled=false; btn.textContent='▶︎ 开始复习（'+due+'）'; }
+  else { btn.disabled=true; btn.textContent= total?'今日已清空 ✓ 明天再来':'导入课程后自动入库'; }
+}
+let srsQueue=[], srsIdx=0;
+function startReview(){ const t=todayNum(); srsQueue=getSrs().filter(x=>x.due<=t); srsIdx=0;
+  if(!srsQueue.length) return; document.getElementById('lessonOverlay').classList.add('on'); window.scrollTo(0,0); showSrsCard(); }
+function showSrsCard(){
+  const body=document.getElementById('lessonBody');
+  if(srsIdx>=srsQueue.length){
+    body.innerHTML=`<div style="text-align:center;margin-top:50px;font-size:22px;font-weight:800">🎉 今日复习完成！</div>
+      <div style="text-align:center;color:var(--dim);margin-top:10px">复习了 ${srsQueue.length} 个，已记进打卡。</div>`;
+    recordToday(); renderStreak(); renderSrs(); return;
+  }
+  const it=srsQueue[srsIdx];
+  body.innerHTML=`<div style="color:var(--dim);text-align:center">${srsIdx+1} / ${srsQueue.length} · ${it.type==='phrase'?'词组':'生词'}</div>
+    <div style="text-align:center;margin-top:34px"><div style="font-size:26px;font-weight:800;line-height:1.4">${esc(it.en)}</div>
+    <button class="spk" id="srsSpk" style="margin-top:14px">🔊 朗读</button></div>
+    <div id="srsAns" style="text-align:center;font-size:20px;color:var(--teal);margin-top:24px;min-height:28px"></div>
+    <button class="big" id="srsReveal" style="margin-top:22px">想好了，显示答案</button>
+    <div id="srsGrade" style="display:none;gap:10px;margin-top:14px"><button class="big amber" id="srsForgot" style="flex:1">👎 忘了</button><button class="big" id="srsGot" style="flex:1">👍 记得</button></div>`;
+  document.getElementById('srsSpk').onclick=()=>speakEN(it.en);
+  document.getElementById('srsReveal').onclick=()=>{ document.getElementById('srsAns').textContent=it.zh;
+    document.getElementById('srsReveal').style.display='none'; document.getElementById('srsGrade').style.display='flex'; };
+  document.getElementById('srsGot').onclick=()=>gradeSrs(true);
+  document.getElementById('srsForgot').onclick=()=>gradeSrs(false);
+}
+function gradeSrs(ok){ const it=srsQueue[srsIdx]; const a=getSrs(); const item=a.find(x=>x.k===it.k);
+  if(item){ if(ok){ item.lvl=Math.min(item.lvl+1,SRS_INT.length-1); item.due=addDaysNum(SRS_INT[item.lvl]); }
+    else { item.lvl=0; item.due=addDaysNum(1); } saveSrs(a); }
+  srsIdx++; showSrsCard(); }
+document.getElementById('srsStart').onclick=startReview;
+renderSrs();
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
