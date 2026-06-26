@@ -108,7 +108,8 @@
       <button class="spk" id="lessonImport" style="margin-top:8px">导入</button>
       <span id="importMsg" style="font-size:12px;margin-left:8px"></span>
     </details>
-    <div id="lessonList" style="margin-top:12px"></div>
+    <div style="font-weight:700;font-size:14px;margin-top:16px">📖 阅读库（全部 <span id="lessonCount">0</span> 篇 · 点开重读）</div>
+    <div id="lessonList" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -486,23 +487,24 @@ function renderLessons(){
   if(morn.length){ const l=morn[0]; t+=`<button class="big amber" style="margin-top:8px" data-open="${l.id}" data-mode="morning">🌅 早上复习：${esc(l.title)}</button>`; }
   if(!t) t='<div style="color:var(--dim);font-size:13px">暂无待办。导入一课，开始 🌙睡前读 → 🌅次日复习 的循环。</div>';
   document.getElementById('taskArea').innerHTML=t;
+  const lc=document.getElementById('lessonCount'); if(lc) lc.textContent=a.length;
   document.getElementById('lessonList').innerHTML = a.length
     ? a.slice().reverse().map(l=>{ const st=l.morningDone?'✅ 完成':(l.bedtimeDone?'🌅 待复习':'🌙 待睡前读');
-        return `<div class="lessonItem"><span>${esc(l.title)}</span><span style="color:var(--dim);font-size:12px;cursor:pointer" data-open="${l.id}" data-mode="${l.morningDone?'morning':(l.bedtimeDone?'morning':'bedtime')}">${st} ›</span></div>`; }).join('')
-    : '';
+        return `<div class="lessonItem"><span style="cursor:pointer;flex:1" data-open="${l.id}" data-mode="read">📖 ${esc(l.title)}</span><span style="color:var(--dim);font-size:12px">${st}</span></div>`; }).join('')
+    : '<span style="color:var(--dim);font-size:13px">还没有文章，导入一课就出现在这。</span>';
   document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openLesson(el.dataset.open, el.dataset.mode));
 }
 function wrow(w,mode){ return `<div class="wrow ${mode==='morning'?'hide':''}" data-en="${esc(w[0])}"><span class="wen">🔊 ${esc(w[0])}</span><span class="zh">${esc(w[1]||'')}</span></div>`; }
 function openLesson(id,mode){
   const l=getLessons().find(x=>x.id===id); if(!l) return; stopShadow();
   const sents=splitSentences(l.article);
-  let h=`<h2 style="font-size:19px;line-height:1.4">${mode==='bedtime'?'🌙 睡前读':'🌅 早上复习'}<br>${esc(l.title)}</h2>`;
+  let h=`<h2 style="font-size:19px;line-height:1.4">${mode==='read'?'📖 重读':(mode==='bedtime'?'🌙 睡前读':'🌅 早上复习')}<br>${esc(l.title)}</h2>`;
   h+=`<div id="lessonArt" style="margin-top:14px;font-size:15px;line-height:1.9">${sents.map(s=>`<span class="sent">${esc(s)} </span>`).join('')}</div>`;
   h+=`<div style="display:flex;gap:8px;margin-top:10px"><button class="spk" id="lArtSpk">🔊 整段</button><button class="spk" id="lArtShadow">🎙️ 逐句跟读</button></div><div id="lArtHint" style="color:var(--amber);font-size:13px;margin-top:6px;min-height:16px"></div>`;
   if(l.words.length) h+=`<h3 style="margin-top:18px;color:var(--teal);font-size:15px">生词</h3>${l.words.map(w=>wrow(w,mode)).join('')}`;
   if(l.phrases.length) h+=`<h3 style="margin-top:18px;color:var(--teal);font-size:15px">词组 / chunks</h3>${l.phrases.map(w=>wrow(w,mode)).join('')}`;
   if(mode==='morning') h+=`<div style="color:var(--dim);font-size:12px;margin-top:10px">💡 先别看中文，点一行翻出来——主动回忆记得最牢。</div>`;
-  h+=`<button class="big" id="lessonDone" style="margin-top:22px">${mode==='bedtime'?'✅ 完成睡前读（明早来复习）':'✅ 完成早上复习'}</button>`;
+  h+=`<button class="big" id="lessonDone" style="margin-top:22px">${mode==='read'?'✅ 读完了（计入打卡）':(mode==='bedtime'?'✅ 完成睡前读（明早来复习）':'✅ 完成早上复习')}</button>`;
   document.getElementById('lessonBody').innerHTML=h;
   document.getElementById('lessonOverlay').classList.add('on'); window.scrollTo(0,0);
   document.getElementById('lArtSpk').onclick=()=>speakEN(l.article);
@@ -515,7 +517,9 @@ function openLesson(id,mode){
 }
 function completeLesson(id,mode){
   const a=getLessons(), l=a.find(x=>x.id===id); if(!l) return;
-  if(mode==='bedtime') l.bedtimeDone=dstr(new Date()); else l.morningDone=dstr(new Date());
+  if(mode==='bedtime') l.bedtimeDone=dstr(new Date());
+  else if(mode==='morning') l.morningDone=dstr(new Date());
+  // read 重读模式不改课程状态，只计入打卡
   saveLessons(a); recordToday(); renderStreak(); stopShadow();
   document.getElementById('lessonOverlay').classList.remove('on'); renderLessons();
 }
