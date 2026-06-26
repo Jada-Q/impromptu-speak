@@ -57,6 +57,9 @@
   .spk.small{ padding:4px 10px; font-size:12px; margin-top:8px; }
   .sent{ transition:background .15s; border-radius:4px; padding:1px 2px; }
   .sent.hl{ background:var(--amber); color:#2a0c12; font-weight:700; }
+  .day{ flex:1; height:24px; border-radius:5px; background:#1c2a27; border:1px solid var(--stroke); }
+  .day.done{ background:linear-gradient(180deg,var(--teal),#2bbf9f); border-color:transparent; }
+  .day.today{ outline:2px solid var(--amber); outline-offset:1px; }
 </style>
 </head>
 <body>
@@ -74,6 +77,15 @@
     <label style="color:var(--dim);font-size:12px;">🗣️ 朗读嗓音
       <select id="voiceSel" style="font:inherit;font-size:12px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:8px;padding:6px 8px;max-width:220px;margin-left:4px"></select>
     </label>
+  </div>
+
+  <div class="card" style="padding:16px 20px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:19px;font-weight:800">🔥 连续 <span id="streakN">0</span> 天</span>
+      <span style="color:var(--dim);font-size:13px">累计 <span id="totalDays">0</span> 天</span>
+    </div>
+    <div id="cal" style="display:flex;gap:5px;margin-top:12px"></div>
+    <div id="todayDone" style="text-align:center;font-size:13px;margin-top:10px;color:var(--dim)"></div>
   </div>
 
   <div class="card">
@@ -365,9 +377,31 @@ function bumpStat(){
   const tk=todayKey(); const today=(+localStorage.getItem(tk)||0)+1; localStorage.setItem(tk,today);
   const total=(+localStorage.getItem('is_total')||0)+1; localStorage.setItem('is_total',total);
   showStat(today,total);
+  recordToday(); renderStreak();
 }
 function showStat(t,total){ statEl.textContent=`今天第 ${t} 次 · 累计 ${total} 次 ${t>=3?'🎉 达标！':''}`; }
+
+// 每日完成记录（打卡 / 连续天数 / 日历）
+function dstr(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function getDays(){ try{ return new Set(JSON.parse(localStorage.getItem('is_days')||'[]')); }catch(e){ return new Set(); } }
+function recordToday(){ const arr=JSON.parse(localStorage.getItem('is_days')||'[]'); const t=dstr(new Date());
+  if(!arr.includes(t)){ arr.push(t); localStorage.setItem('is_days',JSON.stringify(arr)); } }
+function streak(){ const s=getDays(); const d=new Date();
+  if(!s.has(dstr(d))) d.setDate(d.getDate()-1); // 今天没练，从昨天起算连续
+  let n=0; while(s.has(dstr(d))){ n++; d.setDate(d.getDate()-1); } return n; }
+function renderStreak(){
+  const s=getDays(), today=dstr(new Date());
+  document.getElementById('streakN').textContent=streak();
+  document.getElementById('totalDays').textContent=s.size;
+  const arr=[]; for(let i=13;i>=0;i--){ const x=new Date(); x.setDate(x.getDate()-i); arr.push(x); }
+  document.getElementById('cal').innerHTML=arr.map(x=>{ const ds=dstr(x);
+    return `<span class="day ${s.has(ds)?'done':''} ${ds===today?'today':''}" title="${ds}"></span>`; }).join('');
+  document.getElementById('todayDone').textContent = s.has(today)
+    ? '✅ 今天已完成，明天见！' : '今天还没练 — 抽一题说满 60 秒就记上 ✓';
+}
+
 showStat(+localStorage.getItem(todayKey())||0, +localStorage.getItem('is_total')||0);
+renderStreak();
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
