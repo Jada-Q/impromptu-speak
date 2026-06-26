@@ -60,6 +60,17 @@
   .day{ flex:1; height:24px; border-radius:5px; background:#1c2a27; border:1px solid var(--stroke); }
   .day.done{ background:linear-gradient(180deg,var(--teal),#2bbf9f); border-color:transparent; }
   .day.today{ outline:2px solid var(--amber); outline-offset:1px; }
+  .lessonItem{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:14px; }
+  #lessonOverlay{ position:fixed; inset:0; background:radial-gradient(ellipse at 50% -10%, #16302a, var(--bg) 60%); z-index:60; overflow-y:auto; padding:22px 18px 70px; display:none; }
+  #lessonOverlay.on{ display:block; }
+  #lessonOverlay .inner{ max-width:520px; margin:0 auto; }
+  #lessonClose{ font:inherit; font-weight:700; cursor:pointer; background:#1c2a27; color:var(--ink); border:1px solid var(--stroke); border-radius:20px; padding:8px 16px; margin-bottom:14px; }
+  .wrow{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:14px; }
+  .wrow .wen{ cursor:pointer; color:var(--ink); }
+  .wrow .zh{ color:var(--dim); text-align:right; }
+  .wrow.hide .zh{ visibility:hidden; }
+  .wrow.hide{ cursor:pointer; }
+  textarea{ outline:none; }
 </style>
 </head>
 <body>
@@ -86,6 +97,18 @@
     </div>
     <div id="cal" style="display:flex;gap:5px;margin-top:12px"></div>
     <div id="todayDone" style="text-align:center;font-size:13px;margin-top:10px;color:var(--dim)"></div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:800;font-size:17px;margin-bottom:8px">📚 每日课程 · 🌙睡前读 → 🌅早上复习</div>
+    <div id="taskArea"></div>
+    <details style="margin-top:12px">
+      <summary style="cursor:pointer;color:var(--teal);font-size:13px">+ 导入新课程（粘贴 Claude 给的 JSON）</summary>
+      <textarea id="lessonIn" rows="4" placeholder="粘贴课程 JSON…" style="width:100%;font:inherit;font-size:13px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:10px;box-sizing:border-box;margin-top:8px"></textarea>
+      <button class="spk" id="lessonImport" style="margin-top:8px">导入</button>
+      <span id="importMsg" style="font-size:12px;margin-left:8px"></span>
+    </details>
+    <div id="lessonList" style="margin-top:12px"></div>
   </div>
 
   <div class="card">
@@ -134,6 +157,11 @@
   <div class="note">说满 60 秒不卡壳就是胜利，内容好不好不重要。每天 3 次，坚持比完美重要。<br>
   💡 iPhone 想要更自然的英音：设置 → 辅助功能 → 朗读内容 → 嗓音 → English，下载一个「增强/Premium」嗓音，再回来在上面选它。</div>
 </div>
+
+<div id="lessonOverlay"><div class="inner">
+  <button id="lessonClose">✕ 关闭</button>
+  <div id="lessonBody"></div>
+</div></div>
 
 <script>
 let ctx;
@@ -432,6 +460,69 @@ document.getElementById('custShadow').onclick=()=>{ if(!custSents.length) render
   shadowOn?stopShadow():startShadow(custSents,{hlSel:'#custText .sent',btnId:'custShadow',hintId:'custHint',label:'🎙️ 逐句跟读'}); };
 const PREFILL="For years, most people have used AI as a chatbot: you ask, it answers. But AI is now moving toward something bigger—agents. An agent does more than answer. It can break a goal into steps, choose which tools to use, do the actions, and change its plan based on what happens. This is much more powerful than just talking. An agent can search the web, run code, and use a database, and join these skills to finish a task with little human help. You say what you want, and the agent works out how to do it. The hard part is making it reliable. Every step can add a small mistake, and over a long chain these mistakes add up. One wrong guess at the start can ruin the whole task. So today, much research is not about making AI smarter, but about helping agents check their own work and know when to ask a person for help.";
 custIn.value=PREFILL; renderCust(PREFILL);
+
+// ===== 每日课程 + 睡前读/早上复习循环 =====
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getLessons(){ try{ return JSON.parse(localStorage.getItem('is_lessons')||'[]'); }catch(e){ return []; } }
+function saveLessons(a){ localStorage.setItem('is_lessons', JSON.stringify(a)); }
+function addLesson(o){ const a=getLessons();
+  o.id='L'+Date.now().toString(36)+Math.floor(performance.now()).toString(36);
+  o.added=dstr(new Date()); o.bedtimeDone=null; o.morningDone=null; o.words=o.words||[]; o.phrases=o.phrases||[];
+  a.push(o); saveLessons(a); return o; }
+function renderLessons(){
+  const a=getLessons();
+  const bed=a.filter(l=>!l.bedtimeDone), morn=a.filter(l=>l.bedtimeDone&&!l.morningDone);
+  let t='';
+  if(bed.length){ const l=bed[bed.length-1]; t+=`<button class="big" style="margin-top:6px" data-open="${l.id}" data-mode="bedtime">🌙 睡前读：${esc(l.title)}</button>`; }
+  if(morn.length){ const l=morn[0]; t+=`<button class="big amber" style="margin-top:8px" data-open="${l.id}" data-mode="morning">🌅 早上复习：${esc(l.title)}</button>`; }
+  if(!t) t='<div style="color:var(--dim);font-size:13px">暂无待办。导入一课，开始 🌙睡前读 → 🌅次日复习 的循环。</div>';
+  document.getElementById('taskArea').innerHTML=t;
+  document.getElementById('lessonList').innerHTML = a.length
+    ? a.slice().reverse().map(l=>{ const st=l.morningDone?'✅ 完成':(l.bedtimeDone?'🌅 待复习':'🌙 待睡前读');
+        return `<div class="lessonItem"><span>${esc(l.title)}</span><span style="color:var(--dim);font-size:12px;cursor:pointer" data-open="${l.id}" data-mode="${l.morningDone?'morning':(l.bedtimeDone?'morning':'bedtime')}">${st} ›</span></div>`; }).join('')
+    : '';
+  document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openLesson(el.dataset.open, el.dataset.mode));
+}
+function wrow(w,mode){ return `<div class="wrow ${mode==='morning'?'hide':''}" data-en="${esc(w[0])}"><span class="wen">🔊 ${esc(w[0])}</span><span class="zh">${esc(w[1]||'')}</span></div>`; }
+function openLesson(id,mode){
+  const l=getLessons().find(x=>x.id===id); if(!l) return; stopShadow();
+  const sents=splitSentences(l.article);
+  let h=`<h2 style="font-size:19px;line-height:1.4">${mode==='bedtime'?'🌙 睡前读':'🌅 早上复习'}<br>${esc(l.title)}</h2>`;
+  h+=`<div id="lessonArt" style="margin-top:14px;font-size:15px;line-height:1.9">${sents.map(s=>`<span class="sent">${esc(s)} </span>`).join('')}</div>`;
+  h+=`<div style="display:flex;gap:8px;margin-top:10px"><button class="spk" id="lArtSpk">🔊 整段</button><button class="spk" id="lArtShadow">🎙️ 逐句跟读</button></div><div id="lArtHint" style="color:var(--amber);font-size:13px;margin-top:6px;min-height:16px"></div>`;
+  if(l.words.length) h+=`<h3 style="margin-top:18px;color:var(--teal);font-size:15px">生词</h3>${l.words.map(w=>wrow(w,mode)).join('')}`;
+  if(l.phrases.length) h+=`<h3 style="margin-top:18px;color:var(--teal);font-size:15px">词组 / chunks</h3>${l.phrases.map(w=>wrow(w,mode)).join('')}`;
+  if(mode==='morning') h+=`<div style="color:var(--dim);font-size:12px;margin-top:10px">💡 先别看中文，点一行翻出来——主动回忆记得最牢。</div>`;
+  h+=`<button class="big" id="lessonDone" style="margin-top:22px">${mode==='bedtime'?'✅ 完成睡前读（明早来复习）':'✅ 完成早上复习'}</button>`;
+  document.getElementById('lessonBody').innerHTML=h;
+  document.getElementById('lessonOverlay').classList.add('on'); window.scrollTo(0,0);
+  document.getElementById('lArtSpk').onclick=()=>speakEN(l.article);
+  document.getElementById('lArtShadow').onclick=()=>{ shadowOn?stopShadow():startShadow(sents,{hlSel:'#lessonArt .sent',btnId:'lArtShadow',hintId:'lArtHint',label:'🎙️ 逐句跟读'}); };
+  document.getElementById('lessonDone').onclick=()=>completeLesson(id,mode);
+  document.querySelectorAll('#lessonBody .wrow').forEach(row=>{
+    row.querySelector('.wen').onclick=(e)=>{ e.stopPropagation(); speakEN(row.dataset.en); };
+    if(mode==='morning') row.onclick=()=>row.classList.toggle('hide');
+  });
+}
+function completeLesson(id,mode){
+  const a=getLessons(), l=a.find(x=>x.id===id); if(!l) return;
+  if(mode==='bedtime') l.bedtimeDone=dstr(new Date()); else l.morningDone=dstr(new Date());
+  saveLessons(a); recordToday(); renderStreak(); stopShadow();
+  document.getElementById('lessonOverlay').classList.remove('on'); renderLessons();
+}
+document.getElementById('lessonClose').onclick=()=>{ stopShadow(); document.getElementById('lessonOverlay').classList.remove('on'); };
+document.getElementById('lessonImport').onclick=()=>{
+  const msg=document.getElementById('importMsg');
+  try{ const o=JSON.parse(document.getElementById('lessonIn').value);
+    if(!o.title||!o.article){ msg.style.color='var(--red)'; msg.textContent='⚠️ 缺 title 或 article'; return; }
+    addLesson(o); document.getElementById('lessonIn').value=''; msg.style.color='var(--teal)'; msg.textContent='✅ 已导入：'+o.title; renderLessons();
+  }catch(e){ msg.style.color='var(--red)'; msg.textContent='⚠️ JSON 格式不对：'+e.message; }
+};
+// 首次预置一课（AI agents B1）
+if(getLessons().length===0){ addLesson({ title:"AI: From Chatbots to Agents", article:PREFILL,
+  words:[["agent","智能体"],["autonomous","自主的"],["execute","执行"],["adjust","调整"],["reliable","可靠的"],["mistake","错误"],["compound","累积放大"],["ruin","毁掉"],["research","研究"],["database","数据库"]],
+  phrases:[["break a goal into steps","把目标拆成步骤"],["choose which tools to use","选用哪些工具"],["with little human help","几乎不用人帮"],["work out how to do it","想出怎么做"],["check their own work","自我检查"]] }); }
+renderLessons();
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
