@@ -55,6 +55,8 @@
   .spk{ font:inherit; font-size:13px; font-weight:700; cursor:pointer; border:1px solid var(--teal);
         background:rgba(47,230,192,.12); color:var(--teal); border-radius:18px; padding:7px 14px; margin-top:10px; }
   .spk.small{ padding:4px 10px; font-size:12px; margin-top:8px; }
+  .sent{ transition:background .15s; border-radius:4px; padding:1px 2px; }
+  .sent.hl{ background:var(--amber); color:#2a0c12; font-weight:700; }
 </style>
 </head>
 <body>
@@ -119,6 +121,32 @@ function speakEN(text){
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text); u.lang='en-US'; u.rate=0.9; u.pitch=1;
   if(enVoice) u.voice=enVoice; window.speechSynthesis.speak(u);
+}
+// 逐句跟读（读一句 → 停顿让你复述 → 下一句）
+function splitSentences(t){ const m=t.match(/[^.!?]+[.!?]+/g); return m? m.map(s=>s.trim()) : [t]; }
+let curSents=[], shadowOn=false, shadowTimer=null;
+function stopShadow(){ shadowOn=false; clearTimeout(shadowTimer);
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.querySelectorAll('#ref .sent').forEach(s=>s.classList.remove('hl'));
+  const b=document.getElementById('shadowBtn'); if(b) b.textContent='🎙️ 逐句跟读';
+  const ph=document.getElementById('shadowHint'); if(ph) ph.textContent=''; }
+function startShadow(){
+  if(!('speechSynthesis' in window) || !curSents.length) return;
+  shadowOn=true; let i=0;
+  const sb=document.getElementById('shadowBtn'); if(sb) sb.textContent='⏸ 停止跟读';
+  const hint=document.getElementById('shadowHint');
+  (function step(){
+    if(!shadowOn) return;
+    document.querySelectorAll('#ref .sent').forEach(s=>s.classList.remove('hl'));
+    if(i>=curSents.length){ shadowOn=false; if(sb)sb.textContent='🎙️ 逐句跟读'; if(hint)hint.textContent='✅ 跟读完成！再来可重点听不熟的句子'; return; }
+    const span=document.getElementById('sent'+i); if(span) span.classList.add('hl');
+    if(hint) hint.textContent='🔊 听这句…';
+    const u=new SpeechSynthesisUtterance(curSents[i]); u.lang='en-US'; u.rate=0.9; if(enVoice) u.voice=enVoice;
+    u.onend=()=>{ if(!shadowOn) return; if(hint) hint.textContent='👄 轮到你，跟着读…';
+      const words=curSents[i].split(/\s+/).length; const pause=Math.max(1700, words*480);
+      shadowTimer=setTimeout(()=>{ i++; step(); }, pause); };
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  })();
 }
 
 const TOPICS=[
@@ -252,14 +280,21 @@ const topicEl=document.getElementById('topic'), countEl=document.getElementById(
 let refShown=false;
 function renderRef(){
   if(!cur) return;
+  stopShadow();
   let h='<div class="tip" style="margin-top:14px"><h3>📝 参考范本 · PREP（一种说法，不是标准答案）</h3>';
-  if(lang!=='zh') h+=`<p style="color:var(--ink);font-size:14px">${cur.sen}</p>`;
-  if(lang!=='en') h+=`<p style="font-size:13.5px">${cur.szh}</p>`;
-  if(lang!=='zh') h+=`<button class="spk" id="spkRef">🔊 朗读英文（跟读模仿）</button>`;
+  if(lang!=='zh'){
+    curSents=splitSentences(cur.sen);
+    const spans=curSents.map((s,i)=>`<span class="sent" id="sent${i}">${s} </span>`).join('');
+    h+=`<p style="color:var(--ink);font-size:14px">${spans}</p>`;
+    h+=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="spk" id="spkRef">🔊 整段朗读</button><button class="spk" id="shadowBtn">🎙️ 逐句跟读</button></div>`;
+    h+=`<div id="shadowHint" style="color:var(--amber);font-weight:700;font-size:13px;margin-top:8px;min-height:18px"></div>`;
+  }
+  if(lang!=='en') h+=`<p style="font-size:13.5px;margin-top:10px">${cur.szh}</p>`;
   h+='</div>'; refEl.innerHTML=h;
   const b=document.getElementById('spkRef'); if(b) b.onclick=()=>speakEN(cur.sen);
+  const sh=document.getElementById('shadowBtn'); if(sh) sh.onclick=()=>{ shadowOn?stopShadow():startShadow(); };
 }
-function showRef(on){ refShown=on; refEl.style.display=on?'block':'none'; if(on) renderRef();
+function showRef(on){ refShown=on; refEl.style.display=on?'block':'none'; if(on) renderRef(); else stopShadow();
   refBtn.textContent=on?'📝 收起范本':'📝 看参考范本'; }
 refBtn.addEventListener('click',()=>{ if(cur) showRef(!refShown); });
 
@@ -283,6 +318,7 @@ function resetTimer(){ running=false; clearTimeout(timer); left=60; countEl.text
   countEl.className=''; phaseEl.textContent=''; bar.style.width='100%'; goBtn.textContent='▶︎ 开始说 60 秒'; }
 
 function startSpeak(){
+  stopShadow();
   left=60; running=true; countEl.className=''; phaseEl.textContent='🗣️ 开始说！'; goBtn.textContent='⏸ 停止';
   beep(880,0.12);
   timer=setInterval(()=>{
