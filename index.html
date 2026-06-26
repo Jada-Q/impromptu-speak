@@ -37,7 +37,7 @@
   .big:disabled{ opacity:.45; }
 
   .timer{ text-align:center; margin:22px 0 6px; }
-  #count{ font-size:84px; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; color:var(--teal); }
+  #count{ font-size:60px; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; color:var(--teal); }
   #count.warn{ color:var(--amber); } #count.over{ color:var(--red); }
   #phase{ color:var(--dim); font-size:15px; margin-top:6px; min-height:22px; font-weight:600; }
   .bar{ height:8px; border-radius:6px; background:#1c2a27; overflow:hidden; margin-top:14px; }
@@ -91,11 +91,12 @@
     <button data-l="zh">中文</button>
   </div>
 
-  <div style="text-align:center;margin:-8px 0 18px">
-    <label style="color:var(--dim);font-size:12px;">🗣️ 朗读嗓音
+  <details style="text-align:center;margin:-4px 0 16px">
+    <summary style="cursor:pointer;color:var(--dim);font-size:12px">⚙️ 朗读设置（嗓音）</summary>
+    <label style="color:var(--dim);font-size:12px;display:inline-block;margin-top:8px">🗣️ 朗读嗓音
       <select id="voiceSel" style="font:inherit;font-size:12px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:8px;padding:6px 8px;max-width:220px;margin-left:4px"></select>
     </label>
-  </div>
+  </details>
 
   <div class="card">
     <div style="font-weight:800;font-size:18px;margin-bottom:10px">🎯 今天的任务</div>
@@ -154,8 +155,8 @@
   </div>
 
   <div class="card" style="margin-top:16px">
-    <div style="font-weight:800;font-size:17px;margin-bottom:4px">📋 自定义跟读</div>
-    <div style="color:var(--dim);font-size:13px;margin-bottom:10px">把任何英文（如 B1 重写版、AI 文章）贴进来 → 逐句跟读练听力 + 发音。已预填刚才那篇 AI agents B1 版。</div>
+    <div style="font-weight:800;font-size:17px;margin-bottom:4px">📋 自定义跟读 · 临时草稿箱</div>
+    <div style="color:var(--dim);font-size:13px;margin-bottom:10px">贴任意英文 → 临时逐句跟读练听力/发音。<b>不保存</b>；想存进库走上面「📚 导入课程」。</div>
     <textarea id="custIn" rows="4" placeholder="粘贴英文…" style="width:100%;font:inherit;font-size:14px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:10px;box-sizing:border-box"></textarea>
     <button class="spk" id="custLoad" style="margin-top:8px">↩︎ 载入这段</button>
     <div id="custText" style="margin-top:12px"></div>
@@ -468,7 +469,7 @@ renderStreak();
 // 自定义跟读
 let custSents=[];
 function renderCust(text){
-  custSents=splitSentences((text||'').trim());
+  const _t=(text||'').trim(); custSents = _t ? splitSentences(_t) : [];
   document.getElementById('custText').innerHTML = custSents.length
     ? `<p style="font-size:15px;line-height:1.9">${custSents.map(s=>`<span class="sent">${s} </span>`).join('')}</p>`
     : '<span style="color:var(--dim);font-size:13px">（先粘贴英文，再点「载入这段」）</span>';
@@ -479,7 +480,7 @@ document.getElementById('custSpk').onclick=()=>{ if(!custSents.length) renderCus
 document.getElementById('custShadow').onclick=()=>{ if(!custSents.length) renderCust(custIn.value);
   shadowOn?stopShadow():startShadow(custSents,{hlSel:'#custText .sent',btnId:'custShadow',hintId:'custHint',label:'🎙️ 逐句跟读'}); };
 const PREFILL="For years, most people have used AI as a chatbot: you ask, it answers. But AI is now moving toward something bigger—agents. An agent does more than answer. It can break a goal into steps, choose which tools to use, do the actions, and change its plan based on what happens. This is much more powerful than just talking. An agent can search the web, run code, and use a database, and join these skills to finish a task with little human help. You say what you want, and the agent works out how to do it. The hard part is making it reliable. Every step can add a small mistake, and over a long chain these mistakes add up. One wrong guess at the start can ruin the whole task. So today, much research is not about making AI smarter, but about helping agents check their own work and know when to ask a person for help.";
-custIn.value=PREFILL; renderCust(PREFILL);
+renderCust('');  // 草稿箱默认空，不再预填（避免与课程库重复）；PREFILL 仍用于首次预置课程
 
 // ===== 每日课程 + 睡前读/早上复习循环 =====
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -496,7 +497,7 @@ function renderLessons(){
   const lc=document.getElementById('lessonCount'); if(lc) lc.textContent=a.length;
   document.getElementById('lessonList').innerHTML = a.length
     ? a.slice().reverse().map(l=>{ const st=l.morningDone?'✅ 完成':(l.bedtimeDone?'🌅 待复习':'🌙 待睡前读');
-        return `<div class="lessonItem"><span style="cursor:pointer;flex:1" data-open="${l.id}" data-mode="read">📖 ${esc(l.title)}</span><span style="color:var(--dim);font-size:12px">${st}</span><span data-del="${l.id}" style="cursor:pointer;color:#ff6b6b;margin-left:12px">🗑</span></div>`; }).join('')
+        return `<div class="lessonItem"><span style="cursor:pointer;flex:1" data-open="${l.id}" data-mode="read">📖 ${esc(l.title)}</span><span style="color:var(--dim);font-size:12px">${st}</span><span data-del="${l.id}" style="cursor:pointer;color:#ff6b6b;margin-left:8px;padding:6px 8px;font-size:15px">🗑</span></div>`; }).join('')
     : '<span style="color:var(--dim);font-size:13px">还没有文章，导入一课就出现在这。</span>';
   document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openLesson(el.dataset.open, el.dataset.mode));
   document.querySelectorAll('[data-del]').forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); delLesson(el.dataset.del); });
@@ -626,6 +627,20 @@ function gradeSrs(ok){ const it=srsQueue[srsIdx]; const a=getSrs(); const item=a
   srsIdx++; showSrsCard(); }
 document.getElementById('srsStart').onclick=startReview;
 renderSrs();
+
+// 一键链接导入：URL 带 #l=<base64(课程JSON)> 打开即自动入库（免复制粘贴）
+(function importFromHash(){
+  const m=location.hash.match(/[#&]l=([^&]+)/); if(!m) return;
+  try{
+    const json=decodeURIComponent(escape(atob(decodeURIComponent(m[1]))));
+    const o=JSON.parse(json);
+    if(o&&o.title&&o.article){
+      if(getLessons().some(x=>x.title===o.title)){ alert('这课已在库里：'+o.title); }
+      else { addLesson(o); renderLessons(); renderSrs(); renderToday(); alert('✅ 已导入课程：'+o.title); }
+    }
+  }catch(e){ console.warn('链接导入失败',e); }
+  history.replaceState(null,'',location.pathname);  // 清掉 hash，避免刷新重复导入
+})();
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
