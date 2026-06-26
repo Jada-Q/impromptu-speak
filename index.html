@@ -110,6 +110,19 @@
     <div id="stat"></div>
   </div>
 
+  <div class="card" style="margin-top:16px">
+    <div style="font-weight:800;font-size:17px;margin-bottom:4px">📋 自定义跟读</div>
+    <div style="color:var(--dim);font-size:13px;margin-bottom:10px">把任何英文（如 B1 重写版、AI 文章）贴进来 → 逐句跟读练听力 + 发音。已预填刚才那篇 AI agents B1 版。</div>
+    <textarea id="custIn" rows="4" placeholder="粘贴英文…" style="width:100%;font:inherit;font-size:14px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:10px;padding:10px;box-sizing:border-box"></textarea>
+    <button class="spk" id="custLoad" style="margin-top:8px">↩︎ 载入这段</button>
+    <div id="custText" style="margin-top:12px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="spk" id="custSpk">🔊 整段朗读</button>
+      <button class="spk" id="custShadow">🎙️ 逐句跟读</button>
+    </div>
+    <div id="custHint" style="color:var(--amber);font-weight:700;font-size:13px;margin-top:8px;min-height:18px"></div>
+  </div>
+
   <div class="tip">
     <h3>不知道怎么说？用 PREP 四步</h3>
     <p><span class="k">P 观点</span> 先一句话给结论（我觉得…）</p>
@@ -155,26 +168,27 @@ function speakEN(text){
 }
 // 逐句跟读（读一句 → 停顿让你复述 → 下一句）
 function splitSentences(t){ const m=t.match(/[^.!?]+[.!?]+/g); return m? m.map(s=>s.trim()) : [t]; }
-let curSents=[], shadowOn=false, shadowTimer=null;
+let curSents=[], shadowOn=false, shadowTimer=null, _sc=null;
 function stopShadow(){ shadowOn=false; clearTimeout(shadowTimer);
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  document.querySelectorAll('#ref .sent').forEach(s=>s.classList.remove('hl'));
-  const b=document.getElementById('shadowBtn'); if(b) b.textContent='🎙️ 逐句跟读';
-  const ph=document.getElementById('shadowHint'); if(ph) ph.textContent=''; }
-function startShadow(){
-  if(!('speechSynthesis' in window) || !curSents.length) return;
-  shadowOn=true; let i=0;
-  const sb=document.getElementById('shadowBtn'); if(sb) sb.textContent='⏸ 停止跟读';
-  const hint=document.getElementById('shadowHint');
+  if(_sc){ document.querySelectorAll(_sc.hlSel).forEach(s=>s.classList.remove('hl'));
+    const b=document.getElementById(_sc.btnId); if(b) b.textContent=_sc.label;
+    const ph=document.getElementById(_sc.hintId); if(ph) ph.textContent=''; } }
+// 通用逐句跟读引擎：sents=句子数组，sc={hlSel,btnId,hintId,label}
+function startShadow(sents, sc){
+  if(!('speechSynthesis' in window) || !sents.length) return;
+  stopShadow(); _sc=sc; shadowOn=true; let i=0;
+  const b=document.getElementById(sc.btnId); if(b) b.textContent='⏸ 停止跟读';
+  const hint=document.getElementById(sc.hintId);
   (function step(){
     if(!shadowOn) return;
-    document.querySelectorAll('#ref .sent').forEach(s=>s.classList.remove('hl'));
-    if(i>=curSents.length){ shadowOn=false; if(sb)sb.textContent='🎙️ 逐句跟读'; if(hint)hint.textContent='✅ 跟读完成！再来可重点听不熟的句子'; return; }
-    const span=document.getElementById('sent'+i); if(span) span.classList.add('hl');
+    const spans=document.querySelectorAll(sc.hlSel); spans.forEach(s=>s.classList.remove('hl'));
+    if(i>=sents.length){ shadowOn=false; if(b)b.textContent=sc.label; if(hint)hint.textContent='✅ 跟读完成！再来可重点听不熟的句子'; return; }
+    if(spans[i]) spans[i].classList.add('hl');
     if(hint) hint.textContent='🔊 听这句…';
-    const u=new SpeechSynthesisUtterance(curSents[i]); u.lang='en-US'; u.rate=0.9; const _v=currentVoice(); if(_v){ u.voice=_v; u.lang=_v.lang; }
+    const u=new SpeechSynthesisUtterance(sents[i]); u.lang='en-US'; u.rate=0.9; const _v=currentVoice(); if(_v){ u.voice=_v; u.lang=_v.lang; }
     u.onend=()=>{ if(!shadowOn) return; if(hint) hint.textContent='👄 轮到你，跟着读…';
-      const words=curSents[i].split(/\s+/).length; const pause=Math.max(1700, words*480);
+      const words=sents[i].split(/\s+/).length; const pause=Math.max(1700, words*480);
       shadowTimer=setTimeout(()=>{ i++; step(); }, pause); };
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
   })();
@@ -323,7 +337,7 @@ function renderRef(){
   if(lang!=='en') h+=`<p style="font-size:13.5px;margin-top:10px">${cur.szh}</p>`;
   h+='</div>'; refEl.innerHTML=h;
   const b=document.getElementById('spkRef'); if(b) b.onclick=()=>speakEN(cur.sen);
-  const sh=document.getElementById('shadowBtn'); if(sh) sh.onclick=()=>{ shadowOn?stopShadow():startShadow(); };
+  const sh=document.getElementById('shadowBtn'); if(sh) sh.onclick=()=>{ shadowOn?stopShadow():startShadow(curSents,{hlSel:'#ref .sent',btnId:'shadowBtn',hintId:'shadowHint',label:'🎙️ 逐句跟读'}); };
 }
 function showRef(on){ refShown=on; refEl.style.display=on?'block':'none'; if(on) renderRef(); else stopShadow();
   refBtn.textContent=on?'📝 收起范本':'📝 看参考范本'; }
@@ -402,6 +416,22 @@ function renderStreak(){
 
 showStat(+localStorage.getItem(todayKey())||0, +localStorage.getItem('is_total')||0);
 renderStreak();
+
+// 自定义跟读
+let custSents=[];
+function renderCust(text){
+  custSents=splitSentences((text||'').trim());
+  document.getElementById('custText').innerHTML = custSents.length
+    ? `<p style="font-size:15px;line-height:1.9">${custSents.map(s=>`<span class="sent">${s} </span>`).join('')}</p>`
+    : '<span style="color:var(--dim);font-size:13px">（先粘贴英文，再点「载入这段」）</span>';
+}
+const custIn=document.getElementById('custIn');
+document.getElementById('custLoad').onclick=()=>{ stopShadow(); renderCust(custIn.value); };
+document.getElementById('custSpk').onclick=()=>{ if(!custSents.length) renderCust(custIn.value); speakEN(custSents.join(' ')); };
+document.getElementById('custShadow').onclick=()=>{ if(!custSents.length) renderCust(custIn.value);
+  shadowOn?stopShadow():startShadow(custSents,{hlSel:'#custText .sent',btnId:'custShadow',hintId:'custHint',label:'🎙️ 逐句跟读'}); };
+const PREFILL="For years, most people have used AI as a chatbot: you ask, it answers. But AI is now moving toward something bigger—agents. An agent does more than answer. It can break a goal into steps, choose which tools to use, do the actions, and change its plan based on what happens. This is much more powerful than just talking. An agent can search the web, run code, and use a database, and join these skills to finish a task with little human help. You say what you want, and the agent works out how to do it. The hard part is making it reliable. Every step can add a small mistake, and over a long chain these mistakes add up. One wrong guess at the start can ruin the whole task. So today, much research is not about making AI smarter, but about helping agents check their own work and know when to ask a person for help.";
+custIn.value=PREFILL; renderCust(PREFILL);
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
