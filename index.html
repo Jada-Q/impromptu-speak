@@ -614,19 +614,48 @@ function showSrsCard(){
     <button class="spk" id="srsSpk" style="margin-top:14px">🔊 朗读</button></div>
     <div id="srsAns" style="text-align:center;font-size:20px;color:var(--teal);margin-top:24px;min-height:28px"></div>
     <button class="big" id="srsReveal" style="margin-top:22px">想好了，显示答案</button>
-    <div id="srsGrade" style="display:none;gap:10px;margin-top:14px"><button class="big amber" id="srsForgot" style="flex:1">👎 忘了</button><button class="big" id="srsGot" style="flex:1">👍 记得</button></div>`;
+    <div id="srsGrade" style="display:none;gap:10px;margin-top:14px"><button class="big amber" id="srsForgot" style="flex:1">👎 忘了</button><button class="big" id="srsGot" style="flex:1">👍 记得</button></div>
+    <button class="spk" id="srsKnown" style="width:100%;margin-top:12px;border-color:var(--dim);color:var(--dim)">✅ 这词我早会了（不再出现）</button>`;
   document.getElementById('srsSpk').onclick=()=>speakEN(it.en);
   document.getElementById('srsReveal').onclick=()=>{ document.getElementById('srsAns').textContent=it.zh;
     document.getElementById('srsReveal').style.display='none'; document.getElementById('srsGrade').style.display='flex'; };
   document.getElementById('srsGot').onclick=()=>gradeSrs(true);
   document.getElementById('srsForgot').onclick=()=>gradeSrs(false);
+  document.getElementById('srsKnown').onclick=()=>srsKnown();
 }
 function gradeSrs(ok){ const it=srsQueue[srsIdx]; const a=getSrs(); const item=a.find(x=>x.k===it.k);
   if(item){ if(ok){ item.lvl=Math.min(item.lvl+1,SRS_INT.length-1); item.due=addDaysNum(SRS_INT[item.lvl]); }
     else { item.lvl=0; item.due=addDaysNum(1); } saveSrs(a); }
   srsIdx++; showSrsCard(); }
+function srsKnown(){ const it=srsQueue[srsIdx]; saveSrs(getSrs().filter(s=>s.k!==it.k)); srsIdx++; showSrsCard(); }
+// 高频内容词包（批 1：跳过 the/of 类功能词，约 120 个高频内容词，按 ~20/天分批进库）
+const FREQ_WORDS=[
+["time","时间"],["year","年"],["people","人们"],["way","方式"],["day","天"],["thing","东西"],["life","生活"],["world","世界"],["family","家庭"],["student","学生"],
+["group","群体"],["country","国家"],["problem","问题"],["hand","手"],["part","部分"],["place","地方"],["case","情况"],["week","周"],["company","公司"],["system","系统"],
+["question","问题"],["work","工作"],["number","数字"],["night","夜晚"],["point","要点"],["home","家"],["water","水"],["room","房间"],["area","地区"],["money","钱"],
+["story","故事"],["fact","事实"],["month","月"],["right","权利/对"],["study","学习/研究"],["book","书"],["word","单词"],["business","生意"],["issue","议题"],["side","一边"],
+["kind","种类"],["head","头"],["house","房子"],["service","服务"],["friend","朋友"],["power","力量"],["hour","小时"],["game","游戏"],["line","线"],["end","结尾"],
+["member","成员"],["law","法律"],["city","城市"],["community","社区"],["name","名字"],["team","团队"],["minute","分钟"],["idea","主意"],["body","身体"],["information","信息"],
+["face","脸"],["level","水平"],["office","办公室"],["door","门"],["health","健康"],["art","艺术"],["history","历史"],["result","结果"],["change","改变"],["reason","原因"],
+["research","研究"],["moment","时刻"],["education","教育"],["example","例子"],["choice","选择"],["goal","目标"],["skill","技能"],["habit","习惯"],["memory","记忆"],["language","语言"],
+["get","得到"],["make","做/制造"],["know","知道"],["take","拿"],["think","想"],["want","想要"],["give","给"],["use","使用"],["find","找到"],["tell","告诉"],
+["ask","问"],["seem","似乎"],["feel","感觉"],["try","尝试"],["leave","离开"],["need","需要"],["become","成为"],["mean","意味着"],["keep","保持"],["begin","开始"],
+["help","帮助"],["show","展示"],["happen","发生"],["provide","提供"],["include","包括"],["continue","继续"],["learn","学习"],["understand","理解"],["create","创造"],["spend","花费"],
+["remember","记得"],["consider","考虑"],["improve","改善"],["build","建造"],["reach","到达"],["choose","选择"],["explain","解释"],["avoid","避免"],["allow","允许"],["increase","增加"],
+["good","好"],["new","新"],["important","重要"],["different","不同"],["able","能够"],["sure","确定"],["clear","清楚"],["possible","可能"],["true","真的"],["easy","容易"],
+["hard","难"],["simple","简单"],["common","常见"],["whole","整个"],["recent","最近"],["available","可用的"],["similar","相似"],["several","几个"],["enough","足够"],["real","真实"],
+["often","经常"],["however","然而"],["usually","通常"],["actually","实际上"],["especially","尤其"],["together","一起"],["probably","大概"],["already","已经"],["instead","代替"],["finally","最终"]
+];
+function seedFreq(){
+  if(localStorage.getItem('is_freq_seeded')) return;
+  const a=getSrs(); const have=new Set(a.map(x=>x.k));
+  FREQ_WORDS.forEach((w,i)=>{ const k=w[0].toLowerCase().trim(); if(have.has(k)) return;
+    a.push({k,en:w[0],zh:w[1],type:'freq',lvl:0,due:addDaysNum(Math.floor(i/20))}); have.add(k); });
+  saveSrs(a); localStorage.setItem('is_freq_seeded','1');
+}
+seedFreq();
 document.getElementById('srsStart').onclick=startReview;
-renderSrs();
+renderSrs(); renderToday();
 
 // 一键链接导入：URL 带 #l=<base64(课程JSON)> 打开即自动入库（免复制粘贴）
 (function importFromHash(){
