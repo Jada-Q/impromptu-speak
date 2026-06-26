@@ -11,13 +11,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="每日英语" />
 <style>
-  :root{ --bg:#0e1414; --card:#16201f; --stroke:#26332f; --ink:#eafdf6; --dim:#86a59a;
-         --teal:#2fe6c0; --amber:#ffce5a; --pink:#ff7a9c; --red:#ff6b6b; }
+  :root{ --bg:#000; --card:#0e0e12; --stroke:#26262d; --ink:#ffffff; --dim:#7c7c84;
+         --teal:#43c66b; --amber:#f5c518; --pink:#e8412c; --red:#e8412c;
+         --blue:#2f5fe0; --green:#3aa55a; --yellow:#f5c518; }
   *{margin:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  body{ background:radial-gradient(ellipse at 50% -10%, #16302a, var(--bg) 60%); color:var(--ink);
+  body{ background:#000; color:var(--ink);
         font-family:system-ui,-apple-system,"PingFang SC",sans-serif; min-height:100vh; padding:28px 18px 60px; }
   .wrap{ max-width:520px; margin:0 auto; }
-  h1{ font-size:24px; text-align:center; }
+  h1{ font-size:40px; font-weight:900; letter-spacing:-1px; text-align:center; line-height:1; }
+  h1 span{ display:inline-block; }
   .sub{ text-align:center; color:var(--dim); font-size:14px; margin:6px 0 22px; }
 
   .seg{ display:flex; gap:6px; justify-content:center; margin-bottom:20px; }
@@ -30,9 +32,10 @@
   #topicZH{ font-size:17px; color:var(--dim); margin-top:10px; line-height:1.5; }
   .topic-empty{ color:var(--dim); font-size:16px; text-align:center; }
 
-  .big{ width:100%; font:inherit; font-weight:800; font-size:20px; cursor:pointer; border:none; border-radius:16px;
-        padding:16px; margin-top:18px; color:#04211c; background:linear-gradient(90deg,var(--teal),#3fb0ff); }
-  .big.amber{ background:linear-gradient(90deg,var(--amber),var(--pink)); color:#2a0c12; }
+  .big{ width:100%; font:inherit; font-weight:900; font-size:20px; cursor:pointer; border:none; border-radius:12px;
+        padding:16px; margin-top:18px; color:#000; background:var(--teal); }
+  .big.amber{ background:var(--yellow); color:#000; }
+  .big.cyan{ background:var(--blue); color:#fff; }
   .big:active{ transform:scale(.99); }
   .big:disabled{ opacity:.45; }
 
@@ -61,12 +64,16 @@
   .day.done{ background:linear-gradient(180deg,var(--teal),#2bbf9f); border-color:transparent; }
   .day.today{ outline:2px solid var(--amber); outline-offset:1px; }
   .lessonItem{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:14px; }
-  .taskRow{ display:flex; align-items:center; gap:11px; padding:14px 13px; border-radius:13px; background:#15211f; border:1px solid var(--stroke); margin-bottom:9px; cursor:pointer; transition:.12s; }
+  .taskRow{ display:flex; align-items:center; gap:12px; padding:12px 13px; border-radius:12px; background:var(--card); border:1px solid var(--stroke); margin-bottom:9px; cursor:pointer; transition:.12s; }
   .taskRow:active{ transform:scale(.99); }
-  .taskRow .ti{ font-size:21px; line-height:1; }
-  .taskRow .tt{ flex:1; font-size:15px; font-weight:600; }
-  .taskRow .tgo{ color:var(--teal); font-size:20px; font-weight:700; }
-  .taskRow.done{ opacity:.5; cursor:default; }
+  .taskRow .ti{ width:40px; height:40px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:20px; line-height:1; flex:0 0 auto; }
+  .taskRow:nth-of-type(1) .ti{ background:var(--red); }
+  .taskRow:nth-of-type(2) .ti{ background:var(--blue); }
+  .taskRow:nth-of-type(3) .ti{ background:var(--yellow); }
+  .taskRow .tt{ flex:1; font-size:15px; font-weight:800; }
+  .taskRow .tgo{ color:var(--dim); font-size:20px; font-weight:900; }
+  .taskRow.done{ opacity:.45; cursor:default; }
+  .taskRow.done .ti{ background:#2a2a2e !important; }
   .taskRow.done .tt{ text-decoration:line-through; }
   #lessonOverlay{ position:fixed; inset:0; background:radial-gradient(ellipse at 50% -10%, #16302a, var(--bg) 60%); z-index:60; overflow-y:auto; padding:22px 18px 70px; display:none; }
   #lessonOverlay.on{ display:block; }
@@ -82,8 +89,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>📚 每日英语</h1>
-  <div class="sub">读 · 背 · 说 — 每天一点点，靠间隔重复积累</div>
+  <h1><span style="color:var(--red)">每</span><span style="color:var(--blue)">日</span><span style="color:var(--yellow)">英</span><span style="color:var(--green)">语</span></h1>
+  <div class="sub" style="font-family:ui-monospace,monospace;letter-spacing:2px">DAILY ENGLISH · 读 / 背 / 说</div>
 
   <div class="seg" id="langSeg">
     <button data-l="both" class="on">双语</button>
