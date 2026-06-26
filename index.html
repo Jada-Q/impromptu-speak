@@ -526,7 +526,8 @@ function completeLesson(id,mode){
 document.getElementById('lessonClose').onclick=()=>{ stopShadow(); document.getElementById('lessonOverlay').classList.remove('on'); };
 document.getElementById('lessonImport').onclick=()=>{
   const msg=document.getElementById('importMsg');
-  try{ const o=JSON.parse(document.getElementById('lessonIn').value);
+  try{ const raw=document.getElementById('lessonIn').value.replace(/\r/g,'').replace(/\n/g,' ').trim();
+    const o=JSON.parse(raw);
     if(!o.title||!o.article){ msg.style.color='var(--red)'; msg.textContent='⚠️ 缺 title 或 article'; return; }
     addLesson(o); document.getElementById('lessonIn').value=''; msg.style.color='var(--teal)'; msg.textContent='✅ 已导入：'+o.title; renderLessons();
   }catch(e){ msg.style.color='var(--red)'; msg.textContent='⚠️ JSON 格式不对：'+e.message; }
