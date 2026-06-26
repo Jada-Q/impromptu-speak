@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>每日英语 · 主屏 3 款方案</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *{margin:0;box-sizing:border-box;font-family:'Inter',system-ui,'PingFang SC',sans-serif;}
+  body{ background:#0a0a0c; color:#fff; padding:30px 16px 70px; }
+  .head{ text-align:center; margin-bottom:28px; }
+  .head h1{ font-size:22px; } .head p{ color:#888; font-size:14px; margin-top:6px; }
+  .row{ display:flex; gap:26px; justify-content:center; flex-wrap:wrap; align-items:flex-start; }
+  .col{ width:360px; }
+  .label{ text-align:center; font-weight:800; font-size:15px; margin-bottom:6px; }
+  .desc{ text-align:center; color:#888; font-size:12px; margin-bottom:12px; line-height:1.5; }
+  .phone{ border-radius:30px; overflow:hidden; height:720px; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+
+  /* ============ A 专注·克制 ============ */
+  .A{ background:#0f1115; color:#e7e9ee; padding:34px 24px; }
+  .A .t{ font-family:'Noto Serif SC',serif; font-size:30px; font-weight:700; letter-spacing:1px; }
+  .A .sub{ color:#7a8190; font-size:13px; margin:10px 0 34px; letter-spacing:.5px; }
+  .A .sec{ color:#6b7280; font-size:12px; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; }
+  .A .task{ display:flex; align-items:center; gap:14px; padding:18px 2px; border-bottom:1px solid #1e222b; }
+  .A .task .n{ color:#8b9cff; font-size:13px; font-variant-numeric:tabular-nums; width:18px; }
+  .A .task .x{ flex:1; font-size:15px; }
+  .A .task .a{ color:#8b9cff; }
+  .A .streak{ margin-top:40px; display:flex; align-items:baseline; gap:10px; }
+  .A .streak b{ font-size:34px; font-family:'Noto Serif SC',serif; color:#e7e9ee; }
+  .A .streak span{ color:#7a8190; font-size:13px; }
+  .A .cal{ display:flex; gap:5px; margin-top:14px; }
+  .A .cal i{ flex:1; height:6px; border-radius:3px; background:#1e222b; }
+  .A .cal i.on{ background:#8b9cff; }
+
+  /* ============ B 暖纸·亲和 ============ */
+  .B{ background:#f5efe3; color:#33302a; padding:34px 24px; }
+  .B .t{ font-size:28px; font-weight:800; }
+  .B .sub{ color:#9b9384; font-size:13px; margin:8px 0 26px; }
+  .B .card{ background:#fffdf8; border-radius:20px; padding:20px; box-shadow:0 6px 18px rgba(120,100,70,.12); margin-bottom:16px; }
+  .B .ct{ font-weight:800; font-size:16px; margin-bottom:14px; }
+  .B .task{ display:flex; align-items:center; gap:12px; padding:14px; border-radius:14px; background:#f4eee1; margin-bottom:10px; }
+  .B .task .e{ font-size:20px; } .B .task .x{ flex:1; font-size:15px; font-weight:600; }
+  .B .task .a{ color:#c86b4a; font-weight:800; }
+  .B .streak{ display:flex; justify-content:space-between; align-items:center; }
+  .B .streak .big{ font-size:30px; font-weight:800; color:#c86b4a; }
+  .B .streak .lbl{ color:#9b9384; font-size:13px; }
+  .B .cal{ display:flex; gap:5px; margin-top:14px; }
+  .B .cal i{ flex:1; height:22px; border-radius:6px; background:#ece3d2; }
+  .B .cal i.on{ background:#e0a878; }
+
+  /* ============ C 活力·游戏化 ============ */
+  .C{ background:radial-gradient(ellipse at 50% 0%, #2a1248, #11071f 65%); color:#fff; padding:30px 22px; text-align:center; }
+  .C .t{ font-size:26px; font-weight:800; background:linear-gradient(90deg,#ff5fa2,#a96bff,#3fe0ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .C .sub{ color:#b7a9d8; font-size:12px; margin:6px 0 18px; }
+  .C .ring{ width:120px; height:120px; border-radius:50%; margin:6px auto 4px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+            background:conic-gradient(#ffd84d 0 60%, #2a1c44 60% 100%); position:relative; }
+  .C .ring::before{ content:""; position:absolute; inset:10px; border-radius:50%; background:#1a0f2e; }
+  .C .ring b{ position:relative; font-size:34px; font-weight:900; line-height:1; }
+  .C .ring span{ position:relative; font-size:11px; color:#b7a9d8; }
+  .C .tasks{ margin-top:18px; }
+  .C .task{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-radius:16px; margin-bottom:11px; text-align:left;
+            background:linear-gradient(90deg,rgba(169,107,255,.22),rgba(63,224,255,.12)); border:1px solid rgba(169,107,255,.35); }
+  .C .task.p{ background:linear-gradient(90deg,#ff5fa2,#ffce5a); color:#1a0010; border:none; }
+  .C .task .e{ font-size:20px; } .C .task .x{ flex:1; font-size:15px; font-weight:700; } .C .task .a{ font-weight:800; }
+</style>
+</head>
+<body>
+  <div class="head"><h1>「每日英语」主屏 · 3 款方案</h1><p>同样内容，3 种视觉方向。手机上看更准；选一款回复 A / B / C</p></div>
+  <div class="row">
+
+    <!-- A -->
+    <div class="col">
+      <div class="label">A · 专注 · 克制</div>
+      <div class="desc">editorial 暗色 · 单一强调色 · 留白多<br>安静、不打扰、像图书馆</div>
+      <div class="phone A">
+        <div class="t">每日英语</div>
+        <div class="sub">读 · 背 · 说 — 每天一点点</div>
+        <div class="sec">今天的任务</div>
+        <div class="task"><span class="n">1</span><span class="x">睡前读《RAG》</span><span class="a">→</span></div>
+        <div class="task"><span class="n">2</span><span class="x">复习单词（35）</span><span class="a">→</span></div>
+        <div class="task"><span class="n">3</span><span class="x">开口说一题</span><span class="a">→</span></div>
+        <div class="streak"><b>连续 3 天</b><span>· 累计 3 天</span></div>
+        <div class="cal"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="col">
+      <div class="label">B · 暖纸 · 亲和</div>
+      <div class="desc">浅色暖纸 · 柔和圆角 · 友好<br>不像工具，像学习伴侣（减压）</div>
+      <div class="phone B">
+        <div class="t">📚 每日英语</div>
+        <div class="sub">读 · 背 · 说 — 每天一点点</div>
+        <div class="card">
+          <div class="ct">🎯 今天的任务</div>
+          <div class="task"><span class="e">🌙</span><span class="x">睡前读《RAG》</span><span class="a">›</span></div>
+          <div class="task"><span class="e">🔁</span><span class="x">复习单词（35）</span><span class="a">›</span></div>
+          <div class="task"><span class="e">🎤</span><span class="x">开口说一题</span><span class="a">›</span></div>
+        </div>
+        <div class="card">
+          <div class="streak"><span class="big">🔥 连续 3 天</span><span class="lbl">累计 3 天</span></div>
+          <div class="cal"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="col">
+      <div class="label">C · 活力 · 游戏化</div>
+      <div class="desc">暗色 + 鲜艳渐变 · 大环形打卡<br>激励感强，像 Duolingo</div>
+      <div class="phone C">
+        <div class="t">每日英语</div>
+        <div class="sub">读 · 背 · 说 — 每天一点点</div>
+        <div class="ring"><b>3</b><span>连续天</span></div>
+        <div class="tasks">
+          <div class="task p"><span class="e">🌙</span><span class="x">睡前读《RAG》</span><span class="a">GO</span></div>
+          <div class="task"><span class="e">🔁</span><span class="x">复习单词（35）</span><span class="a">›</span></div>
+          <div class="task"><span class="e">🎤</span><span class="x">开口说一题</span><span class="a">›</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
