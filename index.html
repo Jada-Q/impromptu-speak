@@ -70,6 +70,12 @@
     <button data-l="zh">中文</button>
   </div>
 
+  <div style="text-align:center;margin:-8px 0 18px">
+    <label style="color:var(--dim);font-size:12px;">🗣️ 朗读嗓音
+      <select id="voiceSel" style="font:inherit;font-size:12px;background:#15211f;color:var(--ink);border:1px solid var(--stroke);border-radius:8px;padding:6px 8px;max-width:220px;margin-left:4px"></select>
+    </label>
+  </div>
+
   <div class="card">
     <div id="topic"><div class="topic-empty">点下面「🎲 抽题」开始</div></div>
 
@@ -100,7 +106,8 @@
     <p><span class="k">P 重申</span> 所以…（再说一遍观点收尾）</p>
   </div>
 
-  <div class="note">说满 60 秒不卡壳就是胜利，内容好不好不重要。每天 3 次，坚持比完美重要。</div>
+  <div class="note">说满 60 秒不卡壳就是胜利，内容好不好不重要。每天 3 次，坚持比完美重要。<br>
+  💡 iPhone 想要更自然的英音：设置 → 辅助功能 → 朗读内容 → 嗓音 → English，下载一个「增强/Premium」嗓音，再回来在上面选它。</div>
 </div>
 
 <script>
@@ -111,16 +118,28 @@ function beep(freq,dur){ const a=audio(),o=a.createOscillator(),g=a.createGain()
   g.gain.exponentialRampToValueAtTime(0.25,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   o.start(t); o.stop(t+dur+0.02); }
 
-// 英文朗读（跟读模仿）—— 用浏览器自带语音合成
-let enVoice=null;
-function pickVoice(){ const vs=window.speechSynthesis?window.speechSynthesis.getVoices():[];
-  enVoice = vs.find(v=>/en[-_]US/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null; }
-if('speechSynthesis' in window){ pickVoice(); window.speechSynthesis.onvoiceschanged=pickVoice; }
+// 英文朗读 —— 自动挑设备上最好的母语英音 + 可手动选
+let chosenURI = localStorage.getItem('is_voice') || '';
+function listEN(){ return (window.speechSynthesis?window.speechSynthesis.getVoices():[]).filter(v=>/^en/i.test(v.lang)); }
+function rankVoice(v){ let s=0; const n=(v.name||'').toLowerCase();
+  if(/en[-_]us/i.test(v.lang)) s+=3; else if(/en[-_]gb/i.test(v.lang)) s+=2; else s+=1;
+  if(/google|samantha|siri|ava|allison|aaron|nicky|daniel|serena|enhanced|premium|natural/.test(n)) s+=6;
+  if(!v.localService) s+=2; return s; }
+function defaultVoice(){ const es=listEN(); return es.length? es.slice().sort((a,b)=>rankVoice(b)-rankVoice(a))[0] : null; }
+function currentVoice(){ const es=listEN(); return es.find(v=>v.voiceURI===chosenURI) || defaultVoice(); }
+function populateVoices(){ const sel=document.getElementById('voiceSel'); if(!sel) return;
+  const es=listEN().slice().sort((a,b)=>rankVoice(b)-rankVoice(a));
+  if(!es.length){ sel.innerHTML='<option>（设备暂无英文语音）</option>'; return; }
+  sel.innerHTML=es.map(v=>`<option value="${v.voiceURI}">${v.name} · ${v.lang}</option>`).join('');
+  const c=currentVoice(); if(c) sel.value=c.voiceURI; }
+if('speechSynthesis' in window){ populateVoices(); window.speechSynthesis.onvoiceschanged=populateVoices;
+  const _vs=document.getElementById('voiceSel');
+  if(_vs) _vs.addEventListener('change',()=>{ chosenURI=_vs.value; localStorage.setItem('is_voice',chosenURI); }); }
 function speakEN(text){
   if(!('speechSynthesis' in window)){ alert('这个浏览器不支持朗读，建议用 Safari/Chrome'); return; }
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text); u.lang='en-US'; u.rate=0.9; u.pitch=1;
-  if(enVoice) u.voice=enVoice; window.speechSynthesis.speak(u);
+  const v=currentVoice(); if(v){ u.voice=v; u.lang=v.lang; } window.speechSynthesis.speak(u);
 }
 // 逐句跟读（读一句 → 停顿让你复述 → 下一句）
 function splitSentences(t){ const m=t.match(/[^.!?]+[.!?]+/g); return m? m.map(s=>s.trim()) : [t]; }
@@ -141,7 +160,7 @@ function startShadow(){
     if(i>=curSents.length){ shadowOn=false; if(sb)sb.textContent='🎙️ 逐句跟读'; if(hint)hint.textContent='✅ 跟读完成！再来可重点听不熟的句子'; return; }
     const span=document.getElementById('sent'+i); if(span) span.classList.add('hl');
     if(hint) hint.textContent='🔊 听这句…';
-    const u=new SpeechSynthesisUtterance(curSents[i]); u.lang='en-US'; u.rate=0.9; if(enVoice) u.voice=enVoice;
+    const u=new SpeechSynthesisUtterance(curSents[i]); u.lang='en-US'; u.rate=0.9; const _v=currentVoice(); if(_v){ u.voice=_v; u.lang=_v.lang; }
     u.onend=()=>{ if(!shadowOn) return; if(hint) hint.textContent='👄 轮到你，跟着读…';
       const words=curSents[i].split(/\s+/).length; const pause=Math.max(1700, words*480);
       shadowTimer=setTimeout(()=>{ i++; step(); }, pause); };
