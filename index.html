@@ -474,7 +474,7 @@ function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function getLessons(){ try{ return JSON.parse(localStorage.getItem('is_lessons')||'[]'); }catch(e){ return []; } }
 function saveLessons(a){ localStorage.setItem('is_lessons', JSON.stringify(a)); }
 function addLesson(o){ const a=getLessons();
-  o.id='L'+Date.now().toString(36)+Math.floor(performance.now()).toString(36);
+  o.id='L'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   o.added=dstr(new Date()); o.bedtimeDone=null; o.morningDone=null; o.words=o.words||[]; o.phrases=o.phrases||[];
   a.push(o); saveLessons(a);
   addToSrs(o.words,'word'); addToSrs(o.phrases,'phrase');   // 词进复习库（积累）
@@ -490,9 +490,10 @@ function renderLessons(){
   const lc=document.getElementById('lessonCount'); if(lc) lc.textContent=a.length;
   document.getElementById('lessonList').innerHTML = a.length
     ? a.slice().reverse().map(l=>{ const st=l.morningDone?'✅ 完成':(l.bedtimeDone?'🌅 待复习':'🌙 待睡前读');
-        return `<div class="lessonItem"><span style="cursor:pointer;flex:1" data-open="${l.id}" data-mode="read">📖 ${esc(l.title)}</span><span style="color:var(--dim);font-size:12px">${st}</span></div>`; }).join('')
+        return `<div class="lessonItem"><span style="cursor:pointer;flex:1" data-open="${l.id}" data-mode="read">📖 ${esc(l.title)}</span><span style="color:var(--dim);font-size:12px">${st}</span><span data-del="${l.id}" style="cursor:pointer;color:#ff6b6b;margin-left:12px">🗑</span></div>`; }).join('')
     : '<span style="color:var(--dim);font-size:13px">还没有文章，导入一课就出现在这。</span>';
   document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openLesson(el.dataset.open, el.dataset.mode));
+  document.querySelectorAll('[data-del]').forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); delLesson(el.dataset.del); });
 }
 function wrow(w,mode){ return `<div class="wrow ${mode==='morning'?'hide':''}" data-en="${esc(w[0])}"><span class="wen">🔊 ${esc(w[0])}</span><span class="zh">${esc(w[1]||'')}</span></div>`; }
 function openLesson(id,mode){
@@ -514,6 +515,14 @@ function openLesson(id,mode){
     row.querySelector('.wen').onclick=(e)=>{ e.stopPropagation(); speakEN(row.dataset.en); };
     if(mode==='morning') row.onclick=()=>row.classList.toggle('hide');
   });
+}
+function delLesson(id){
+  const a=getLessons(), l=a.find(x=>x.id===id); if(!l) return;
+  if(!confirm('删除「'+l.title+'」？连它的生词/词组一起移出复习库。')) return;
+  saveLessons(a.filter(x=>x.id!==id));
+  const keys=new Set([...(l.words||[]),...(l.phrases||[])].map(w=>(w[0]||'').toLowerCase().trim()));
+  saveSrs(getSrs().filter(s=>!keys.has(s.k)));
+  renderLessons(); renderSrs();
 }
 function completeLesson(id,mode){
   const a=getLessons(), l=a.find(x=>x.id===id); if(!l) return;
