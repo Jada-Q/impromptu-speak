@@ -52,6 +52,9 @@
   .opts input{ width:18px; height:18px; accent-color:var(--teal); }
   #stat{ text-align:center; color:var(--amber); font-weight:700; font-size:14px; margin-top:16px; min-height:20px; }
   .note{ color:var(--dim); font-size:12px; text-align:center; margin-top:18px; line-height:1.6; }
+  .spk{ font:inherit; font-size:13px; font-weight:700; cursor:pointer; border:1px solid var(--teal);
+        background:rgba(47,230,192,.12); color:var(--teal); border-radius:18px; padding:7px 14px; margin-top:10px; }
+  .spk.small{ padding:4px 10px; font-size:12px; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -81,6 +84,9 @@
       <label><input type="checkbox" id="prepChk"> 先给我 15 秒想一想</label>
     </div>
 
+    <button class="big" id="refBtn" disabled style="background:#1c2a27;color:var(--ink);border:1px solid var(--stroke)">📝 看参考范本</button>
+    <div id="ref" style="display:none"></div>
+
     <div id="stat"></div>
   </div>
 
@@ -103,67 +109,175 @@ function beep(freq,dur){ const a=audio(),o=a.createOscillator(),g=a.createGain()
   g.gain.exponentialRampToValueAtTime(0.25,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   o.start(t); o.stop(t+dur+0.02); }
 
+// 英文朗读（跟读模仿）—— 用浏览器自带语音合成
+let enVoice=null;
+function pickVoice(){ const vs=window.speechSynthesis?window.speechSynthesis.getVoices():[];
+  enVoice = vs.find(v=>/en[-_]US/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null; }
+if('speechSynthesis' in window){ pickVoice(); window.speechSynthesis.onvoiceschanged=pickVoice; }
+function speakEN(text){
+  if(!('speechSynthesis' in window)){ alert('这个浏览器不支持朗读，建议用 Safari/Chrome'); return; }
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text); u.lang='en-US'; u.rate=0.9; u.pitch=1;
+  if(enVoice) u.voice=enVoice; window.speechSynthesis.speak(u);
+}
+
 const TOPICS=[
-  {en:"Describe the best part of your day today.", zh:"说说你今天最棒的一件事。"},
-  {en:"If you could have any superpower, what would it be and why?", zh:"如果能拥有一种超能力，你选什么？为什么？"},
-  {en:"Coffee or tea? Make your case.", zh:"咖啡还是茶？说服我。"},
-  {en:"Recommend a movie or book you love.", zh:"推荐一部你喜欢的电影或书。"},
-  {en:"What's something new you learned recently?", zh:"你最近学到的一件新东西是什么？"},
-  {en:"Describe your perfect weekend.", zh:"描述你心目中完美的周末。"},
-  {en:"If you could live anywhere, where and why?", zh:"如果能住在任何地方，你选哪里？为什么？"},
-  {en:"What skill do you wish you had?", zh:"你最想拥有的一个技能是什么？"},
-  {en:"Talk about a place you want to travel to.", zh:"聊一个你想去旅行的地方。"},
-  {en:"What makes a good friend?", zh:"什么样的人算是好朋友？"},
-  {en:"Describe your favorite food without saying its name.", zh:"不说名字，描述你最爱的食物。"},
-  {en:"Is it better to be early or to be on time? Why?", zh:"早到好还是准时好？为什么？"},
-  {en:"What's a small habit that improved your life?", zh:"哪个小习惯改善了你的生活？"},
-  {en:"If you had an extra hour every day, how would you use it?", zh:"如果每天多出一小时，你会怎么用？"},
-  {en:"Convince me to try your hobby.", zh:"说服我去尝试你的爱好。"},
-  {en:"What does success mean to you?", zh:"成功对你意味着什么？"},
-  {en:"Describe a person you admire.", zh:"描述一个你敬佩的人。"},
-  {en:"Phone in the morning: good or bad? Why?", zh:"早上先看手机，好还是不好？为什么？"},
-  {en:"What would you tell your younger self?", zh:"你会对年轻时的自己说什么？"},
-  {en:"Pick a season and defend it as the best.", zh:"选一个季节，论证它是最好的。"},
-  {en:"What's worth spending more money on?", zh:"什么东西值得多花点钱？"},
-  {en:"Describe your ideal way to relax.", zh:"描述你最理想的放松方式。"},
-  {en:"Should kids learn to code? Why or why not?", zh:"小孩该学编程吗？为什么？"},
-  {en:"What's a movie/song that changed how you feel?", zh:"哪部电影/哪首歌改变过你的心情？"},
-  {en:"Talk about something you're grateful for.", zh:"说一件你心怀感激的事。"},
-  {en:"City life or countryside? Why?", zh:"城市生活还是乡村生活？为什么？"},
-  {en:"What's a rule you think should be changed?", zh:"有什么规定你觉得该改？"},
-  {en:"Describe how to make your favorite drink.", zh:"讲讲怎么做你最爱的一杯饮料。"},
-  {en:"If money were no object, what would you do all day?", zh:"如果不愁钱，你整天会做什么？"},
-  {en:"What's the best advice you've ever received?", zh:"你收到过最好的建议是什么？"},
-  {en:"Is it better to be a specialist or a generalist?", zh:"做专才好还是通才好？"},
-  {en:"Describe your hometown to someone who's never been.", zh:"向没去过的人描述你的家乡。"},
-  {en:"What technology could you not live without?", zh:"哪样科技产品你离不开？"},
-  {en:"Talk about a goal you have this year.", zh:"聊一个你今年的目标。"},
-  {en:"What makes you laugh?", zh:"什么会让你笑？"},
-  {en:"Should we keep learning after school? Why?", zh:"离开学校后还要不要继续学习？为什么？"},
-  {en:"Describe a challenge you overcame.", zh:"描述一个你克服过的困难。"},
-  {en:"What's overrated, and what's underrated?", zh:"什么被高估了，什么被低估了？"},
-  {en:"If you taught a class, what would it be about?", zh:"如果你开一门课，会教什么？"},
-  {en:"Plan the perfect day for a friend visiting your city.", zh:"为来你城市的朋友安排完美的一天。"}
+  {en:"Describe the best part of your day today.", zh:"说说你今天最棒的一件事。",
+   sen:"The best part of my day was my quiet morning coffee. I love it because those ten calm minutes let me plan before things get busy. For example, today I made my whole to-do list then. So a small morning ritual really sets my tone for the day.",
+   szh:"我今天最棒的是早上那杯安静的咖啡。我喜欢它，因为那平静的十分钟让我在忙起来前做好规划。比如今天我就趁那会儿列好了待办。所以一个小小的晨间仪式真的定下了我一天的基调。"},
+  {en:"If you could have any superpower, what would it be and why?", zh:"如果能拥有一种超能力，你选什么？为什么？",
+   sen:"If I could have one superpower, I'd choose to learn any skill instantly. I'd pick it because time is our scarcest resource. For example, I could master guitar, coding, and languages in a day. So I'd spend my life doing far more of what I love.",
+   szh:"如果能有一种超能力，我会选瞬间学会任何技能。因为时间是我们最稀缺的资源。比如我可以一天就精通吉他、编程和语言。所以我能把人生花在更多我热爱的事上。"},
+  {en:"Coffee or tea? Make your case.", zh:"咖啡还是茶？说服我。",
+   sen:"I'd pick coffee. I choose it because the ritual and the energy help me focus in the morning. For example, one cup and I'm ready to work. So coffee wins for me, though I respect tea lovers.",
+   szh:"我选咖啡。因为那种仪式感和提神效果能帮我早上集中精神。比如喝一杯我就进入工作状态了。所以对我来说咖啡更胜一筹，不过我也尊重爱喝茶的人。"},
+  {en:"Recommend a movie or book you love.", zh:"推荐一部你喜欢的电影或书。",
+   sen:"I'd recommend the book Atomic Habits. I love it because it shows that tiny daily actions beat big bursts of effort. For example, it taught me to practice for just 15 minutes a day. So if you want lasting change, start with this one.",
+   szh:"我推荐《掌控习惯》这本书。我喜欢它，因为它说明微小的每日行动胜过偶尔的猛干。比如它教会我每天只练 15 分钟。所以如果你想要长久的改变，从这本开始。"},
+  {en:"What's something new you learned recently?", zh:"你最近学到的一件新东西是什么？",
+   sen:"Recently I learned that skills split into procedural and declarative. It matters because each needs a different way to practice. For example, guitar is procedural, so repetition works, while facts you just need to understand. So now I practice smarter.",
+   szh:"我最近学到技能分程序性和陈述性两类。这很重要，因为两者练法不同。比如吉他是程序性的，靠重复，而知识理解一遍就行。所以现在我练得更聪明了。"},
+  {en:"Describe your perfect weekend.", zh:"描述你心目中完美的周末。",
+   sen:"My perfect weekend mixes rest and making something. I like that balance because pure rest bores me but pure work tires me. For example, a slow morning, then building a small project. So the ideal weekend leaves me both relaxed and proud.",
+   szh:"我完美的周末是休息和创造的结合。我喜欢这种平衡，因为纯休息让我无聊，纯工作让我疲惫。比如慵懒的早晨，然后做个小项目。所以理想的周末让我既放松又有成就感。"},
+  {en:"If you could live anywhere, where and why?", zh:"如果能住在任何地方，你选哪里？为什么？",
+   sen:"I'd live in Tokyo. I'd choose it because it blends order, food, and energy like nowhere else. For example, you can have a quiet temple and a buzzing street on the same block. So it keeps life both calm and exciting.",
+   szh:"我会住在东京。因为它把秩序、美食和活力融合得无与伦比。比如同一个街区里能有安静的寺庙和热闹的街道。所以它让生活既平静又精彩。"},
+  {en:"What skill do you wish you had?", zh:"你最想拥有的一个技能是什么？",
+   sen:"I wish I could speak in public with total ease. I want it because confident speaking opens doors everywhere. For example, pitching ideas or teaching would feel effortless. So that's the skill I'm practicing right now.",
+   szh:"我希望能毫不紧张地公开演讲。我想要它，因为自信的表达在哪都能打开局面。比如推销想法或教学都会变得轻松。所以这正是我现在在练的技能。"},
+  {en:"Talk about a place you want to travel to.", zh:"聊一个你想去旅行的地方。",
+   sen:"I really want to visit Kyoto. I'd go because I love history you can walk through. For example, the old streets and temples make you feel time slow down. So it's at the top of my travel list.",
+   szh:"我很想去京都。因为我喜欢能用脚走进去的历史。比如那些老街和寺庙让你感觉时间都慢了下来。所以它是我旅行清单的第一名。"},
+  {en:"What makes a good friend?", zh:"什么样的人算是好朋友？",
+   sen:"A good friend is someone who shows up. It matters because words are easy but presence is rare. For example, a real friend calls when you're down, not just when it's fun. So reliability is what I value most.",
+   szh:"好朋友是那种会出现的人。这很重要，因为说漂亮话容易，真正在场很难。比如真朋友在你低落时会来，而不只在开心时。所以可靠是我最看重的。"},
+  {en:"Describe your favorite food without saying its name.", zh:"不说名字，描述你最爱的食物。",
+   sen:"It's warm, soft, and slightly chewy, served in a steaming bowl. I love it because it's comforting on any cold day. For example, the broth alone can lift my whole mood. So it's my go-to whenever I need a hug in food form.",
+   szh:"它温热、柔软、有点嚼劲，盛在冒着热气的碗里。我爱它，因为冷天吃特别治愈。比如光是那汤就能让我整个心情变好。所以每当我需要“食物版的拥抱”时就吃它。"},
+  {en:"Is it better to be early or to be on time? Why?", zh:"早到好还是准时好？为什么？",
+   sen:"I think it's better to be early. I believe so because being early removes stress and shows respect. For example, arriving ten minutes early lets me settle and focus. So I'd rather wait than rush.",
+   szh:"我觉得早到更好。因为早到能消除压力、也是一种尊重。比如提前十分钟到能让我安顿下来、集中精神。所以我宁愿等也不愿赶。"},
+  {en:"What's a small habit that improved your life?", zh:"哪个小习惯改善了你的生活？",
+   sen:"Writing down three tasks each morning changed my life. It helps because it turns a vague day into a clear plan. For example, on busy days it stops me from drifting. So that tiny habit gives me control.",
+   szh:"每天早上写下三件要做的事改变了我的生活。它有用，因为把模糊的一天变成清晰的计划。比如忙碌时它能防止我瞎忙。所以这个小习惯给了我掌控感。"},
+  {en:"If you had an extra hour every day, how would you use it?", zh:"如果每天多出一小时，你会怎么用？",
+   sen:"I'd use an extra hour to learn something by hand. I'd choose that because making things feels more alive than scrolling. For example, an hour of guitar or drawing daily. So in a year I'd have a real new skill.",
+   szh:"我会用多出的一小时亲手学点东西。因为动手创造比刷手机更有生命力。比如每天一小时弹吉他或画画。所以一年后我就能拥有一项真正的新技能。"},
+  {en:"Convince me to try your hobby.", zh:"说服我去尝试你的爱好。",
+   sen:"You should try building small web tools. I recommend it because you turn an idea into something real in a day. For example, I made a guitar tuner that I actually use. So you'll feel the joy of making, not just consuming.",
+   szh:"你该试试做小网页工具。我推荐它，因为你能一天内把想法变成真东西。比如我做了个自己真在用的吉他调音器。所以你会体会到“创造”而非只是“消费”的快乐。"},
+  {en:"What does success mean to you?", zh:"成功对你意味着什么？",
+   sen:"To me, success is having freedom over my time. I define it that way because money without time isn't really rich. For example, choosing my own projects matters more than a big title. So I measure success by autonomy.",
+   szh:"对我来说，成功是能自由支配自己的时间。我这样定义，因为有钱没时间并不算真正富有。比如能自己挑选做什么项目，比一个大头衔更重要。所以我用“自主”来衡量成功。"},
+  {en:"Describe a person you admire.", zh:"描述一个你敬佩的人。",
+   sen:"I admire people who stay curious their whole life. I admire that because curiosity keeps you growing at any age. For example, someone learning a new instrument at sixty inspires me. So lifelong learners are my heroes.",
+   szh:"我敬佩那些一生都保持好奇的人。因为好奇能让你在任何年纪都在成长。比如一个六十岁还在学新乐器的人让我深受鼓舞。所以终身学习者是我心中的英雄。"},
+  {en:"Phone in the morning: good or bad? Why?", zh:"早上先看手机，好还是不好？为什么？",
+   sen:"I think checking your phone first thing is bad. I say that because it hands your attention to others before you set your own day. For example, one notification can hijack a whole morning. So I keep my first 30 minutes phone-free.",
+   szh:"我觉得一早就看手机不好。因为这等于在你安排好自己的一天前，就把注意力交给了别人。比如一条通知就能毁掉一整个上午。所以我让起床后的头 30 分钟不碰手机。"},
+  {en:"What would you tell your younger self?", zh:"你会对年轻时的自己说什么？",
+   sen:"I'd tell my younger self to start before feeling ready. I'd say that because waiting for confidence wastes years. For example, I delayed projects that turned out easy. So just begin, and confidence will follow.",
+   szh:"我会对年轻的自己说：别等准备好了再开始。因为等“有信心”会浪费很多年。比如我拖延过的项目其实都很简单。所以先动手，信心自然会来。"},
+  {en:"Pick a season and defend it as the best.", zh:"选一个季节，论证它是最好的。",
+   sen:"Autumn is the best season. I say so because it's comfortable and beautiful at once. For example, cool air, golden leaves, and no heavy coats yet. So autumn gives you the best of every world.",
+   szh:"秋天是最好的季节。因为它同时兼顾舒适和美。比如凉爽的空气、金黄的落叶，又还不用穿厚外套。所以秋天给了你各种好处的综合。"},
+  {en:"What's worth spending more money on?", zh:"什么东西值得多花点钱？",
+   sen:"It's worth spending more on a good bed and shoes. I believe so because you're always in one or the other. For example, bad shoes ruin a whole trip. So things between you and the ground deserve quality.",
+   szh:"床和鞋值得多花钱。因为你不是躺在床上就是穿着鞋。比如一双烂鞋能毁掉整趟旅行。所以那些“你和地面之间”的东西值得好品质。"},
+  {en:"Describe your ideal way to relax.", zh:"描述你最理想的放松方式。",
+   sen:"My ideal way to relax is a slow walk with music. I like it because it rests my mind without a screen. For example, an evening walk clears all the day's noise. So that's how I truly reset.",
+   szh:"我最理想的放松是边听音乐边慢慢散步。我喜欢它，因为不用屏幕就能让大脑休息。比如傍晚散个步能清空一天的噪音。所以那是我真正“重启”的方式。"},
+  {en:"Should kids learn to code? Why or why not?", zh:"小孩该学编程吗？为什么？",
+   sen:"I think kids should learn some coding. I say that because it teaches logical thinking, not just programming. For example, breaking a problem into steps helps in any subject. So even if they never code for work, the thinking pays off.",
+   szh:"我觉得小孩该学一点编程。因为它教的是逻辑思维，不只是写代码。比如把问题拆成步骤，在任何学科都有用。所以就算他们以后不靠编程吃饭，这种思维也会受益终身。"},
+  {en:"What's a movie or song that changed how you feel?", zh:"哪部电影/哪首歌改变过你的心情？",
+   sen:"A calm piano playlist always changes my mood. It works because slow music slows my racing thoughts. For example, ten minutes of it before bed and I sleep better. So music is my fastest reset button.",
+   szh:"一个安静的钢琴歌单总能改变我的心情。它有用，因为缓慢的音乐能让我飞转的思绪慢下来。比如睡前听十分钟我就睡得更好。所以音乐是我最快的“重启键”。"},
+  {en:"Talk about something you're grateful for.", zh:"说一件你心怀感激的事。",
+   sen:"I'm grateful for being able to learn anything online. I appreciate it because curiosity now has no gatekeeper. For example, I taught myself to build apps for free. So I never take that access for granted.",
+   szh:"我感激能在网上学到任何东西。因为如今好奇心不再有门槛。比如我免费自学会了做应用。所以我从不把这种“获取知识的自由”当作理所当然。"},
+  {en:"City life or countryside? Why?", zh:"城市生活还是乡村生活？为什么？",
+   sen:"I prefer city life. I choose it because of convenience and opportunity. For example, everything I need is a short walk away. So the city fits my fast-moving life, though I'd visit the countryside to recharge.",
+   szh:"我更喜欢城市生活。因为方便、机会多。比如我需要的一切走几步就有。所以城市适合我快节奏的生活，不过我会去乡村给自己充电。"},
+  {en:"What's a rule you think should be changed?", zh:"有什么规定你觉得该改？",
+   sen:"I think rigid nine-to-five hours should change. I say so because people focus best at different times. For example, I do my best work late at night. So judging by results, not hours, would help everyone.",
+   szh:"我觉得死板的朝九晚五该改。因为每个人专注的时间不同。比如我深夜的工作效率最高。所以用“成果”而非“工时”来衡量，对所有人都更好。"},
+  {en:"Describe how to make your favorite drink.", zh:"讲讲怎么做你最爱的一杯饮料。",
+   sen:"My favorite drink is a simple iced latte. I love it because it's quick yet feels like a treat. For example, just espresso, cold milk, and ice in a tall glass. So in two minutes I get a little daily reward.",
+   szh:"我最爱的是简单的冰拿铁。我喜欢它，因为又快又有种犒劳自己的感觉。比如就是浓缩咖啡、冷牛奶加冰，倒进高杯里。所以两分钟我就能得到一份每日小奖励。"},
+  {en:"If money were no object, what would you do all day?", zh:"如果不愁钱，你整天会做什么？",
+   sen:"If money were no object, I'd build and create all day. I'd choose that because making things is what energizes me. For example, I'd design tools and learn new skills nonstop. So even rich, I'd basically keep doing this.",
+   szh:"如果不愁钱，我会整天做东西、搞创作。因为创造才是让我有能量的事。比如我会不停地设计工具、学新技能。所以就算有钱了，我基本还是会做现在这些。"},
+  {en:"What's the best advice you've ever received?", zh:"你收到过最好的建议是什么？",
+   sen:"The best advice I got was 'done is better than perfect.' It helps because perfectionism stops me from finishing. For example, I now ship rough versions and improve later. So that line made me far more productive.",
+   szh:"我收到过最好的建议是“完成胜过完美”。它有用，因为完美主义让我无法收尾。比如我现在先发粗糙版本，之后再改进。所以这句话让我的产出大大提高。"},
+  {en:"Is it better to be a specialist or a generalist?", zh:"做专才好还是通才好？",
+   sen:"I lean toward being a generalist. I say so because combining skills creates rare value. For example, someone who knows design and code can build alone. So in a fast-changing world, range is a strength.",
+   szh:"我偏向做通才。因为把多种技能组合起来能创造稀缺价值。比如一个既懂设计又懂代码的人可以独立完成产品。所以在快速变化的世界里，“广度”是一种优势。"},
+  {en:"Describe your hometown to someone who's never been.", zh:"向没去过的人描述你的家乡。",
+   sen:"My hometown is a mix of old and new. I'd describe it that way because traditions and modern life sit side by side. For example, you'll find old markets next to glass towers. So it feels both rooted and alive.",
+   szh:"我的家乡是新旧交融的地方。我会这样描述，因为传统和现代生活并存。比如老市场紧挨着玻璃高楼。所以它既有根，又充满活力。"},
+  {en:"What technology could you not live without?", zh:"哪样科技产品你离不开？",
+   sen:"I couldn't live without my smartphone. I say so because it's my map, office, and library in one. For example, I work, learn, and navigate all on it. So losing it would feel like losing a limb.",
+   szh:"我离不开智能手机。因为它集地图、办公室和图书馆于一身。比如我用它工作、学习、导航。所以丢了它就像少了一只手。"},
+  {en:"Talk about a goal you have this year.", zh:"聊一个你今年的目标。",
+   sen:"This year my goal is to speak more confidently. I chose it because it limits me more than any technical skill. For example, I freeze up when I should just talk. So I practice short impromptu speeches every day.",
+   szh:"我今年的目标是更自信地表达。我选它，因为它比任何技术能力都更限制我。比如本该开口时我却卡住。所以我每天练短短的即兴演讲。"},
+  {en:"What makes you laugh?", zh:"什么会让你笑？",
+   sen:"Unexpected, clever wordplay makes me laugh most. I like it because smart humor surprises your brain. For example, a good pun catches me off guard every time. So clever jokes beat slapstick for me.",
+   szh:"出其不意的巧妙文字游戏最能让我笑。我喜欢它，因为聪明的幽默会给大脑一个惊喜。比如一个好的双关每次都让我猝不及防。所以对我来说，机智的笑话胜过闹剧。"},
+  {en:"Should we keep learning after school? Why?", zh:"离开学校后还要不要继续学习？为什么？",
+   sen:"We should absolutely keep learning after school. I say so because the world changes faster than any diploma. For example, half of today's tools didn't exist ten years ago. So lifelong learning is no longer optional.",
+   szh:"离开学校后绝对该继续学。因为世界变化的速度比任何文凭都快。比如今天一半的工具十年前根本不存在。所以终身学习已经不是选择题。"},
+  {en:"Describe a challenge you overcame.", zh:"描述一个你克服过的困难。",
+   sen:"I once had to learn a whole new skill under a deadline. It was hard because I started from zero. For example, I broke it into tiny daily steps instead of panicking. So I learned that steady effort beats raw talent.",
+   szh:"我曾经要在截止日前学会一项全新技能。难在我是从零开始。比如我没有慌，而是把它拆成每天的小步骤。所以我明白了：稳定的努力胜过天赋。"},
+  {en:"What's overrated, and what's underrated?", zh:"什么被高估了，什么被低估了？",
+   sen:"I think motivation is overrated and routine is underrated. I say so because feelings fade but habits last. For example, on lazy days my routine still carries me. So build systems, don't wait to feel inspired.",
+   szh:"我觉得“动力”被高估了，“惯例”被低估了。因为情绪会消退，习惯会留下。比如懒散的日子里，是我的惯例在带着我走。所以要建立系统，别等灵感来。"},
+  {en:"If you taught a class, what would it be about?", zh:"如果你开一门课，会教什么？",
+   sen:"I'd teach a class on learning how to learn. I'd choose it because it multiplies every other subject. For example, knowing how memory works changes how you study. So it's the one skill that makes all others easier.",
+   szh:"我会开一门“如何学习”的课。因为它能放大其他所有学科的效果。比如懂得记忆的原理会改变你的学法。所以它是那个能让其他一切都变简单的技能。"},
+  {en:"Plan the perfect day for a friend visiting your city.", zh:"为来你城市的朋友安排完美的一天。",
+   sen:"For a visiting friend, I'd start with a local breakfast. I'd plan it that way because food shows a city's soul. For example, morning market, afternoon park, evening night view. So they'd taste, walk, and remember the city in one day.",
+   szh:"招待来访的朋友，我会从当地早餐开始。这样安排，因为食物最能体现一座城市的灵魂。比如上午逛市场、下午去公园、傍晚看夜景。所以一天下来，他们能尝到、走到、也记住这座城。"}
 ];
 
 let lang='both', running=false, timer=null, left=60, lastIdx=-1, cur=null;
 const topicEl=document.getElementById('topic'), countEl=document.getElementById('count'),
       phaseEl=document.getElementById('phase'), bar=document.getElementById('barFill'),
-      goBtn=document.getElementById('goBtn'), drawBtn=document.getElementById('drawBtn'), statEl=document.getElementById('stat');
+      goBtn=document.getElementById('goBtn'), drawBtn=document.getElementById('drawBtn'), statEl=document.getElementById('stat'),
+      refBtn=document.getElementById('refBtn'), refEl=document.getElementById('ref');
+let refShown=false;
+function renderRef(){
+  if(!cur) return;
+  let h='<div class="tip" style="margin-top:14px"><h3>📝 参考范本 · PREP（一种说法，不是标准答案）</h3>';
+  if(lang!=='zh') h+=`<p style="color:var(--ink);font-size:14px">${cur.sen}</p>`;
+  if(lang!=='en') h+=`<p style="font-size:13.5px">${cur.szh}</p>`;
+  if(lang!=='zh') h+=`<button class="spk" id="spkRef">🔊 朗读英文（跟读模仿）</button>`;
+  h+='</div>'; refEl.innerHTML=h;
+  const b=document.getElementById('spkRef'); if(b) b.onclick=()=>speakEN(cur.sen);
+}
+function showRef(on){ refShown=on; refEl.style.display=on?'block':'none'; if(on) renderRef();
+  refBtn.textContent=on?'📝 收起范本':'📝 看参考范本'; }
+refBtn.addEventListener('click',()=>{ if(cur) showRef(!refShown); });
 
 document.querySelectorAll('#langSeg button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#langSeg button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  lang=b.dataset.l; if(cur) renderTopic();
+  lang=b.dataset.l; if(cur) renderTopic(); if(refShown) renderRef();
 }));
 function renderTopic(){
   let h='';
   if(lang!=='zh') h+=`<div id="topicEN">${cur.en}</div>`;
   if(lang!=='en') h+=`<div id="topicZH">${cur.zh}</div>`;
+  if(lang!=='zh') h+=`<button class="spk small" id="spkTopic">🔊 读题目</button>`;
   topicEl.innerHTML=h;
+  const b=document.getElementById('spkTopic'); if(b) b.onclick=()=>speakEN(cur.en);
 }
 drawBtn.addEventListener('click',()=>{
   let i; do{ i=Math.floor(Math.random()*TOPICS.length); }while(i===lastIdx && TOPICS.length>1);
-  lastIdx=i; cur=TOPICS[i]; renderTopic(); goBtn.disabled=false; resetTimer();
+  lastIdx=i; cur=TOPICS[i]; renderTopic(); goBtn.disabled=false; refBtn.disabled=false; showRef(false); resetTimer();
 });
 function resetTimer(){ running=false; clearTimeout(timer); left=60; countEl.textContent='60';
   countEl.className=''; phaseEl.textContent=''; bar.style.width='100%'; goBtn.textContent='▶︎ 开始说 60 秒'; }
@@ -176,7 +290,7 @@ function startSpeak(){
     if(left<=10 && left>0){ countEl.className='warn'; phaseEl.textContent='最后 10 秒，撑住！'; if(left<=5) beep(660,0.06); }
     if(left<=0){ clearInterval(timer); running=false; countEl.className='over'; countEl.textContent='0';
       phaseEl.textContent='✅ 说满 60 秒，赞！'; beep(880,0.1); setTimeout(()=>beep(1100,0.18),140);
-      goBtn.textContent='▶︎ 再说一次'; bumpStat(); }
+      goBtn.textContent='▶︎ 再说一次'; bumpStat(); showRef(true); }
   },1000);
 }
 goBtn.addEventListener('click',()=>{
